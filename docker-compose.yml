@@ -1,0 +1,53 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    environment:
+      USER_SERVICE_HOST: be-user-service
+      USER_SERVICE_PORT: "5001"
+      PRODUCT_SERVICE_HOST: be-product-service
+      PRODUCT_SERVICE_PORT: "5002"
+      ORDER_SERVICE_HOST: be-order-service
+      ORDER_SERVICE_PORT: "5003"
+    depends_on:
+      be-user-service:
+        condition: service_healthy
+      be-product-service:
+        condition: service_healthy
+      be-order-service:
+        condition: service_healthy
+    networks: [nt548]
+
+  be-user-service:
+    build: ./be-user-service
+    ports:
+      - "5001:5001"
+    environment:
+      PORT: "5001"
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-nt548-local-development-secret}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@nt548.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-nt548-demo}
+      TOKEN_TTL_SECONDS: ${TOKEN_TTL_SECONDS:-3600}
+    networks: [nt548]
+
+  be-product-service:
+    build: ./be-product-service
+    ports:
+      - "5002:5002"
+    environment:
+      PORT: "5002"
+    networks: [nt548]
+
+  be-order-service:
+    build: ./be-order-service
+    ports:
+      - "5003:5003"
+    environment:
+      PORT: "5003"
+    networks: [nt548]
+
+networks:
+  nt548:
+    driver: bridge
