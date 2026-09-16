@@ -31,14 +31,15 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-nt548-demo}
       TOKEN_TTL_SECONDS: ${TOKEN_TTL_SECONDS:-3600}
       DB_HOST: ${DB_HOST:-}
-      DB_PORT: ${DB_PORT:-5432}
+      DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME:-nt548}
       DB_USER: ${DB_USER:-nt548_app}
       DB_PASSWORD: ${DB_PASSWORD:-}
-      DB_SCHEMA: ${DB_SCHEMA:-public}
-      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      DB_SSL: ${DB_SSL:-false}
+      DB_SSL_CA: ${DB_SSL_CA:-}
+      DB_CHARSET: ${DB_CHARSET:-utf8mb4}
+      DB_TIMEZONE: ${DB_TIMEZONE:-Z}
       DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-10}
-      DB_POOL_MIN: ${DB_POOL_MIN:-2}
       DB_POOL_MAX: ${DB_POOL_MAX:-10}
     networks: [nt548]
 
@@ -50,14 +51,15 @@ services:
       PORT: "5002"
       JWT_SECRET: ${JWT_SECRET:-nt548-local-development-secret}
       DB_HOST: ${DB_HOST:-}
-      DB_PORT: ${DB_PORT:-5432}
+      DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME:-nt548}
       DB_USER: ${DB_USER:-nt548_app}
       DB_PASSWORD: ${DB_PASSWORD:-}
-      DB_SCHEMA: ${DB_SCHEMA:-public}
-      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      DB_SSL: ${DB_SSL:-false}
+      DB_SSL_CA: ${DB_SSL_CA:-}
+      DB_CHARSET: ${DB_CHARSET:-utf8mb4}
+      DB_TIMEZONE: ${DB_TIMEZONE:-Z}
       DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-10}
-      DB_POOL_MIN: ${DB_POOL_MIN:-2}
       DB_POOL_MAX: ${DB_POOL_MAX:-10}
     networks: [nt548]
 
@@ -69,14 +71,15 @@ services:
       PORT: "5003"
       JWT_SECRET: ${JWT_SECRET:-nt548-local-development-secret}
       DB_HOST: ${DB_HOST:-}
-      DB_PORT: ${DB_PORT:-5432}
+      DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME:-nt548}
       DB_USER: ${DB_USER:-nt548_app}
       DB_PASSWORD: ${DB_PASSWORD:-}
-      DB_SCHEMA: ${DB_SCHEMA:-public}
-      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      DB_SSL: ${DB_SSL:-false}
+      DB_SSL_CA: ${DB_SSL_CA:-}
+      DB_CHARSET: ${DB_CHARSET:-utf8mb4}
+      DB_TIMEZONE: ${DB_TIMEZONE:-Z}
       DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-10}
-      DB_POOL_MIN: ${DB_POOL_MIN:-2}
       DB_POOL_MAX: ${DB_POOL_MAX:-10}
     networks: [nt548]
 
