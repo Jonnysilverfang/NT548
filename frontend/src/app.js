@@ -19,8 +19,23 @@ const demoData = {
 
 const endpoints = { users: "/api/users", products: "/api/products", orders: "/api/orders" };
 const page = document.body.dataset.page || "overview";
+const protectedPages = new Set(["overview", "products", "orders"]);
 const state = { users: [], products: [], orders: [], usesDemo: false };
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+function getAccessToken() {
+  return sessionStorage.getItem("nt548_access_token");
+}
+
+function redirectToLogin() {
+  const currentPage = window.location.pathname.split("/").pop() || "index.html";
+  sessionStorage.setItem("nt548_return_to", currentPage);
+  sessionStorage.removeItem("nt548_access_token");
+  sessionStorage.removeItem("nt548_current_user");
+  window.location.replace("login.html");
+}
+
+if (protectedPages.has(page) && !getAccessToken()) redirectToLogin();
 
 function escapeHtml(value) {
   return String(value)
@@ -134,7 +149,14 @@ function showLoading(section) {
 async function loadSection(section) {
   showLoading(section);
   try {
-    const response = await fetch(endpoints[section], { headers: { Accept: "application/json" } });
+    const token = getAccessToken();
+    const response = await fetch(endpoints[section], {
+      headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401 || response.status === 403) {
+      redirectToLogin();
+      return;
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     if (!Array.isArray(payload)) throw new Error("Dữ liệu API không hợp lệ");
@@ -230,7 +252,10 @@ function initializeLogin() {
       sessionStorage.setItem("nt548_access_token", payload.access_token);
       sessionStorage.setItem("nt548_current_user", JSON.stringify(payload.user));
       showToast("Đăng nhập thành công. Đang mở bảng điều khiển...");
-      window.setTimeout(() => window.location.assign("index.html"), 450);
+      const requestedPage = sessionStorage.getItem("nt548_return_to");
+      const allowedPages = new Set(["index.html", "products.html", "orders.html"]);
+      sessionStorage.removeItem("nt548_return_to");
+      window.setTimeout(() => window.location.assign(allowedPages.has(requestedPage) ? requestedPage : "index.html"), 450);
     } catch {
       showToast("Không thể kết nối Auth Service. Hãy kiểm tra backend đang chạy.");
     } finally {
@@ -240,5 +265,23 @@ function initializeLogin() {
   });
 }
 
+function initializeAuthNavigation() {
+  if (!getAccessToken()) return;
+  document.querySelectorAll('.nav-item[href="login.html"]').forEach((link) => {
+    const label = link.querySelector("span");
+    if (label) label.textContent = "Đăng xuất";
+    link.setAttribute("href", "#logout");
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      sessionStorage.removeItem("nt548_access_token");
+      sessionStorage.removeItem("nt548_current_user");
+      window.location.assign("login.html");
+    });
+  });
+}
+
 if (page === "login") initializeLogin();
-else refreshPage();
+else if (getAccessToken()) {
+  initializeAuthNavigation();
+  refreshPage();
+}

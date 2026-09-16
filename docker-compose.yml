@@ -38,6 +38,7 @@ services:
       - "5002:5002"
     environment:
       PORT: "5002"
+      JWT_SECRET: ${JWT_SECRET:-nt548-local-development-secret}
     networks: [nt548]
 
   be-order-service:
@@ -46,6 +47,7 @@ services:
       - "5003:5003"
     environment:
       PORT: "5003"
+      JWT_SECRET: ${JWT_SECRET:-nt548-local-development-secret}
     networks: [nt548]
 
 networks:
