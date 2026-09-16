@@ -30,6 +30,16 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@nt548.local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-nt548-demo}
       TOKEN_TTL_SECONDS: ${TOKEN_TTL_SECONDS:-3600}
+      DB_HOST: ${DB_HOST:-}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-nt548}
+      DB_USER: ${DB_USER:-nt548_app}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_SCHEMA: ${DB_SCHEMA:-public}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-10}
+      DB_POOL_MIN: ${DB_POOL_MIN:-2}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
     networks: [nt548]
 
   be-product-service:
@@ -39,6 +49,16 @@ services:
     environment:
       PORT: "5002"
       JWT_SECRET: ${JWT_SECRET:-nt548-local-development-secret}
+      DB_HOST: ${DB_HOST:-}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-nt548}
+      DB_USER: ${DB_USER:-nt548_app}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_SCHEMA: ${DB_SCHEMA:-public}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-10}
+      DB_POOL_MIN: ${DB_POOL_MIN:-2}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
     networks: [nt548]
 
   be-order-service:
@@ -48,6 +68,16 @@ services:
     environment:
       PORT: "5003"
       JWT_SECRET: ${JWT_SECRET:-nt548-local-development-secret}
+      DB_HOST: ${DB_HOST:-}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-nt548}
+      DB_USER: ${DB_USER:-nt548_app}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_SCHEMA: ${DB_SCHEMA:-public}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-10}
+      DB_POOL_MIN: ${DB_POOL_MIN:-2}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
     networks: [nt548]
 
 networks:
