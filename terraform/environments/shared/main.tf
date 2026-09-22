@@ -45,8 +45,9 @@ resource "aws_s3_bucket_public_access_block" "artifacts" {
 
 # 1. VPC Module
 module "vpc" {
-  source       = "../../modules/vpc"
-  project_name = var.project_name
+  source             = "../../modules/vpc"
+  project_name       = var.project_name
+  availability_zones = var.availability_zones
 }
 
 # 2. ALB Module (Shared ALB, HTTP:80 Listener, PROD Target Groups)

@@ -6,6 +6,7 @@
 aws_region            = "ap-southeast-1"
 project_name          = "NT548"
 domain_name           = "yourdomain.com" # Optional: Apex domain if planning to map Route 53 later
+availability_zones    = ["ap-southeast-1a", "ap-southeast-1b"] # Pin two AZs available to this account
 
 # GitHub CodeStar / CodeConnections connection ARN created in your AWS Account:
 # (AWS Console -> CodePipeline -> Settings -> Connections -> Create connection)

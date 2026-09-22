@@ -114,7 +114,7 @@ Pipeline dùng `V2` + `QUEUED`, explicit branch filters và `DetectChanges=false
 | Artifact bucket | Tự sinh theo account: `nt548-artifacts-<ACCOUNT_ID>` |
 | GitHub access | Connection riêng, cùng Region với pipeline và phải được repo owner authorize |
 | IAM | Connection ARN và repository được truyền bằng biến, không dùng wildcard cho `UseConnection` |
-| Availability Zones | Tự chọn hai AZ khả dụng trong Region nếu không override |
+| Availability Zones | Bootstrap chọn rồi pin hai AZ khả dụng, tránh subnet drift khi AWS bổ sung AZ |
 | Secrets | Giá trị nằm trong Secrets Manager, không ghi vào Terraform state hoặc Git |
 | Initial PROD images | Bootstrap với `service_desired_count=0`, sau đó build image và scale lên `1` |
 | Pipeline Terraform variables | Được lưu trong CodeBuild dưới dạng `TF_VAR_*` từ lần apply đầu |
@@ -228,7 +228,7 @@ Lần apply đầu tạo PROD services với desired count bằng `0`; điều n
 | `app_image_tag` | prod | Baseline task-definition tag khi bootstrap |
 | `service_desired_count` | prod | `0` khi chưa có image, `1+` sau bootstrap |
 | `project_name` | shared | Project tag prefix |
-| `availability_zones` | VPC module | Optional AZ override; mặc định tự phát hiện |
+| `availability_zones` | shared/VPC module | Hai AZ được bootstrap phát hiện và ghi cố định vào `terraform.tfvars` |
 
 Các giá trị trong `terraform.tfvars.example` chỉ là mẫu. Không commit `terraform.tfvars`, secrets hoặc plan files.
 

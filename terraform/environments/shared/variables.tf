@@ -22,6 +22,16 @@ variable "github_connection_arn" {
   default     = "arn:aws:codeconnections:ap-southeast-1:404063515739:connection/043741f8-f157-4ed4-8cb7-9006c8b02a4d"
 }
 
+variable "availability_zones" {
+  type        = list(string)
+  description = "Two or more availability zones pinned during account bootstrap"
+
+  validation {
+    condition     = length(var.availability_zones) >= 2
+    error_message = "availability_zones must contain at least two zones."
+  }
+}
+
 variable "github_repository" {
   type        = string
   description = "GitHub repository (Owner/Repo)"

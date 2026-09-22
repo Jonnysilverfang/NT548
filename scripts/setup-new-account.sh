@@ -54,6 +54,16 @@ echo "[3/6] Creating account-local Terraform state bucket"
 terraform -chdir=terraform/bootstrap init -input=false
 terraform -chdir=terraform/bootstrap apply -auto-approve -var="aws_region=$AWS_REGION"
 
+read -r -a AVAILABILITY_ZONES <<< "$(aws ec2 describe-availability-zones \
+    --region "$AWS_REGION" \
+    --query 'sort_by(AvailabilityZones[?ZoneType==`availability-zone` && State==`available`], &ZoneName)[].ZoneName' \
+    --output text)"
+if [ "${#AVAILABILITY_ZONES[@]}" -lt 2 ]; then
+    echo "ERROR: Region $AWS_REGION must expose at least two available standard Availability Zones."
+    exit 1
+fi
+echo "Pinned Availability Zones: ${AVAILABILITY_ZONES[0]}, ${AVAILABILITY_ZONES[1]}"
+
 echo "[4/6] Creating application secret when absent"
 if ! aws secretsmanager describe-secret --secret-id "nt548/app-secrets" --region "$AWS_REGION" >/dev/null 2>&1; then
     JWT_SECRET="${NT548_JWT_SECRET:-$(openssl rand -hex 32)}"
@@ -74,6 +84,7 @@ cat > terraform/environments/shared/terraform.tfvars <<EOF
 aws_region            = "$AWS_REGION"
 project_name          = "$PROJECT_NAME"
 domain_name           = "$DOMAIN_NAME"
+availability_zones    = ["${AVAILABILITY_ZONES[0]}", "${AVAILABILITY_ZONES[1]}"]
 github_connection_arn = "$GITHUB_CONNECTION_ARN"
 github_repository     = "$GITHUB_REPOSITORY"
 EOF

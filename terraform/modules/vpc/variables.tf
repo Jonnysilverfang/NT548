@@ -12,8 +12,12 @@ variable "public_subnet_cidrs" {
 
 variable "availability_zones" {
   type        = list(string)
-  description = "Optional availability zones for subnets; null selects available zones in the provider region"
-  default     = null
+  description = "Pinned availability zones for deterministic subnet placement"
+
+  validation {
+    condition     = length(var.availability_zones) >= 2
+    error_message = "availability_zones must contain at least two zones."
+  }
 }
 
 variable "project_name" {
