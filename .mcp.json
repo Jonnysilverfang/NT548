@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "aws-api-mcp": {
+      "command": "C:\\Users\\ADMIN\\.local\\bin\\uvx.exe",
+      "args": [
+        "awslabs.aws-api-mcp-server@latest"
+      ],
+      "env": {
+        "AWS_REGION": "ap-southeast-1"
+      }
+    },
+    "aws-cloudwatch-mcp": {
+      "command": "C:\\Users\\ADMIN\\.local\\bin\\uvx.exe",
+      "args": [
+        "--from",
+        "git+https://github.com/awslabs/mcp.git#subdirectory=src/cloudwatch-mcp-server",
+        "cloudwatch-mcp-server"
+      ],
+      "env": {
+        "AWS_REGION": "ap-southeast-1"
+      }
+    },
+    "aws-mcp": {
+      "command": "C:\\Users\\ADMIN\\.local\\bin\\uvx.exe",
+      "args": [
+        "mcp-proxy-for-aws@latest",
+        "https://aws-mcp.us-east-1.api.aws/mcp",
+        "--metadata",
+        "AWS_REGION=ap-southeast-1"
+      ],
+      "env": {
+        "AWS_REGION": "ap-southeast-1"
+      }
+    }
+  }
+}

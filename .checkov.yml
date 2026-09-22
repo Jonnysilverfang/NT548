@@ -1,0 +1,10 @@
+# Checkov configuration file for NT548 Infrastructure
+# Strict security gate: No blanket skips, only specific verified design-mandated exceptions
+
+framework:
+  - terraform
+
+directory:
+  - terraform/modules
+  - terraform/environments/shared
+  - terraform/environments/prod

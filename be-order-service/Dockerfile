@@ -1,5 +1,7 @@
 FROM node:20-alpine
 
+RUN apk update && apk upgrade --no-cache && (apk del openssl || true)
+
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev && npm cache clean --force

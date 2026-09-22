@@ -101,7 +101,13 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "INTERNAL_ERROR", message: "Dịch vụ xác thực gặp lỗi." });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[AUTH] Listening on port ${PORT}`);
-  if (!process.env.ADMIN_PASSWORD) console.warn("[AUTH] Using the local demo password. Override ADMIN_PASSWORD outside local development.");
-});
+function startServer(port = PORT) {
+  return app.listen(port, "0.0.0.0", () => {
+    console.log(`[AUTH] Listening on port ${port}`);
+    if (!process.env.ADMIN_PASSWORD) console.warn("[AUTH] Using the local demo password. Override ADMIN_PASSWORD outside local development.");
+  });
+}
+
+if (require.main === module) startServer();
+
+module.exports = { app, startServer };

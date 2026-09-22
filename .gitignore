@@ -5,4 +5,20 @@ __pycache__/
 *.py[cod]
 .venv/
 .DS_Store
-.codex/
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.zip
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+tfplan
+tfplan.txt
+*.tfplan

@@ -63,4 +63,10 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "INTERNAL_ERROR", message: "Dịch vụ đơn hàng gặp lỗi." });
 });
 
-app.listen(PORT, "0.0.0.0", () => console.log(`[ORDER] Listening on port ${PORT}`));
+function startServer(port = PORT) {
+  return app.listen(port, "0.0.0.0", () => console.log(`[ORDER] Listening on port ${port}`));
+}
+
+if (require.main === module) startServer();
+
+module.exports = { app, startServer };

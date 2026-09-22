@@ -1,0 +1,12 @@
+# ==============================================================================
+# DEV Environment Pipeline Variables Example
+# Copy this file to terraform.tfvars and customize for your AWS Account
+# ==============================================================================
+
+aws_region            = "ap-southeast-1"
+
+# GitHub CodeStar / CodeConnections connection ARN:
+github_connection_arn = "arn:aws:codestar-connections:ap-southeast-1:<YOUR_ACCOUNT_ID>:connection/<YOUR_CONNECTION_ID>"
+
+# Your GitHub repository in format: Owner/Repo (e.g. your-github-user/NT548)
+github_repository     = "your-github-user/NT548"
