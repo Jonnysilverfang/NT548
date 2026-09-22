@@ -188,7 +188,7 @@ resource "aws_ecs_service" "prod_frontend" {
   name                               = "nt548-prod-frontend"
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.prod_frontend.arn
-  desired_count                      = 1
+  desired_count                      = var.service_desired_count
   launch_type                        = "FARGATE"
   platform_version                   = "LATEST"
   health_check_grace_period_seconds  = 60
@@ -229,7 +229,7 @@ resource "aws_ecs_service" "prod_user" {
   name                               = "nt548-prod-user"
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.prod_user.arn
-  desired_count                      = 1
+  desired_count                      = var.service_desired_count
   launch_type                        = "FARGATE"
   platform_version                   = "LATEST"
   health_check_grace_period_seconds  = 60
@@ -270,7 +270,7 @@ resource "aws_ecs_service" "prod_product" {
   name                               = "nt548-prod-product"
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.prod_product.arn
-  desired_count                      = 1
+  desired_count                      = var.service_desired_count
   launch_type                        = "FARGATE"
   platform_version                   = "LATEST"
   health_check_grace_period_seconds  = 60
@@ -311,7 +311,7 @@ resource "aws_ecs_service" "prod_order" {
   name                               = "nt548-prod-order"
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.prod_order.arn
-  desired_count                      = 1
+  desired_count                      = var.service_desired_count
   launch_type                        = "FARGATE"
   platform_version                   = "LATEST"
   health_check_grace_period_seconds  = 60

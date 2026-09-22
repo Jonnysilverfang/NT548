@@ -4,7 +4,6 @@ env:
   variables:
     AWS_REGION: "ap-southeast-1"
     CLUSTER_NAME: "nt548-cluster"
-    BASE_URL: "https://kiendev.site"
 
 phases:
   install:

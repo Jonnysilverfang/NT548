@@ -31,16 +31,17 @@ module "sns_app" {
 
 # 2. ECS Cluster & PROD Services (24/7 Fleet with Rolling Deployment)
 module "ecs" {
-  source             = "../../modules/ecs"
-  cluster_name       = "nt548-cluster"
-  vpc_id             = data.terraform_remote_state.shared.outputs.vpc_id
-  subnet_ids         = data.terraform_remote_state.shared.outputs.public_subnet_ids
-  security_group_id  = data.terraform_remote_state.shared.outputs.ecs_tasks_security_group_id
-  execution_role_arn = data.terraform_remote_state.shared.outputs.ecs_task_execution_role_arn
-  task_role_arn      = data.terraform_remote_state.shared.outputs.ecs_task_role_arn
-  prod_target_groups = data.terraform_remote_state.shared.outputs.prod_target_groups
-  frontend_api_host  = data.terraform_remote_state.shared.outputs.alb_dns_name
-  app_secret_arn     = data.aws_secretsmanager_secret.app.arn
+  source                = "../../modules/ecs"
+  cluster_name          = "nt548-cluster"
+  vpc_id                = data.terraform_remote_state.shared.outputs.vpc_id
+  subnet_ids            = data.terraform_remote_state.shared.outputs.public_subnet_ids
+  security_group_id     = data.terraform_remote_state.shared.outputs.ecs_tasks_security_group_id
+  execution_role_arn    = data.terraform_remote_state.shared.outputs.ecs_task_execution_role_arn
+  task_role_arn         = data.terraform_remote_state.shared.outputs.ecs_task_role_arn
+  prod_target_groups    = data.terraform_remote_state.shared.outputs.prod_target_groups
+  frontend_api_host     = data.terraform_remote_state.shared.outputs.alb_dns_name
+  app_secret_arn        = data.aws_secretsmanager_secret.app.arn
+  service_desired_count = var.service_desired_count
 
   image_urls = {
     frontend = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-frontend"]}:${var.app_image_tag}"
@@ -72,6 +73,36 @@ resource "aws_codebuild_project" "infra_plan" {
     environment_variable {
       name  = "AWS_REGION"
       value = var.aws_region
+    }
+
+    environment_variable {
+      name  = "TF_VAR_aws_region"
+      value = var.aws_region
+    }
+
+    environment_variable {
+      name  = "TF_VAR_approval_email"
+      value = var.approval_email
+    }
+
+    environment_variable {
+      name  = "TF_VAR_github_connection_arn"
+      value = var.github_connection_arn
+    }
+
+    environment_variable {
+      name  = "TF_VAR_github_repository"
+      value = var.github_repository
+    }
+
+    environment_variable {
+      name  = "TF_VAR_app_image_tag"
+      value = var.app_image_tag
+    }
+
+    environment_variable {
+      name  = "TF_VAR_service_desired_count"
+      value = tostring(var.service_desired_count)
     }
   }
 
@@ -114,6 +145,36 @@ resource "aws_codebuild_project" "infra_apply" {
     environment_variable {
       name  = "AWS_REGION"
       value = var.aws_region
+    }
+
+    environment_variable {
+      name  = "TF_VAR_aws_region"
+      value = var.aws_region
+    }
+
+    environment_variable {
+      name  = "TF_VAR_approval_email"
+      value = var.approval_email
+    }
+
+    environment_variable {
+      name  = "TF_VAR_github_connection_arn"
+      value = var.github_connection_arn
+    }
+
+    environment_variable {
+      name  = "TF_VAR_github_repository"
+      value = var.github_repository
+    }
+
+    environment_variable {
+      name  = "TF_VAR_app_image_tag"
+      value = var.app_image_tag
+    }
+
+    environment_variable {
+      name  = "TF_VAR_service_desired_count"
+      value = tostring(var.service_desired_count)
     }
   }
 
@@ -256,7 +317,7 @@ resource "aws_codepipeline" "prod" {
 
       configuration = {
         NotificationArn = module.sns_infra.topic_arn
-        CustomData      = "Infrastructure approval for commit #{SourceVariables.CommitId} in ap-southeast-1. Terraform fmt/validate and Checkov passed; review tfplan.txt in InfraPlanArtifact before approving the exact saved tfplan."
+        CustomData      = "Infrastructure approval for commit #{SourceVariables.CommitId} in ${var.aws_region}. Terraform fmt/validate and Checkov passed; review tfplan.txt in InfraPlanArtifact before approving the exact saved tfplan."
       }
     }
   }

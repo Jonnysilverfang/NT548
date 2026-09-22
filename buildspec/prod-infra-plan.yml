@@ -26,7 +26,7 @@ phases:
       - "echo Step 2 Terraform Init and Validate"
       - "cd terraform/environments/prod"
       - "ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)"
-      - "terraform init -backend-config=\"bucket=nt548-terraform-state-${ACCOUNT_ID}\" -input=false"
+      - "terraform init -backend-config=\"bucket=nt548-terraform-state-${ACCOUNT_ID}\" -backend-config=\"region=${AWS_REGION}\" -input=false"
       - "terraform validate"
       - "cd ../../.."
       - "echo Step 3 Checkov IaC Security Scan"

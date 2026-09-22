@@ -17,7 +17,7 @@ phases:
       - "echo Applying Approved Terraform Plan"
       - "cd terraform/environments/prod"
       - "ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)"
-      - "terraform init -backend-config=\"bucket=nt548-terraform-state-${ACCOUNT_ID}\" -input=false"
+      - "terraform init -backend-config=\"bucket=nt548-terraform-state-${ACCOUNT_ID}\" -backend-config=\"region=${AWS_REGION}\" -input=false"
       - "echo Applying tfplan generated in InfraPlan stage"
       - "terraform apply -auto-approve tfplan"
       - "echo PROD infrastructure successfully applied"

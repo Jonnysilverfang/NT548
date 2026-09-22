@@ -1,3 +1,18 @@
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+locals {
+  selected_availability_zones = var.availability_zones != null ? var.availability_zones : slice(data.aws_availability_zones.available.names, 0, length(var.public_subnet_cidrs))
+}
+
+check "availability_zone_count" {
+  assert {
+    condition     = length(local.selected_availability_zones) >= length(var.public_subnet_cidrs)
+    error_message = "availability_zones must contain at least one entry per public subnet CIDR."
+  }
+}
+
 resource "aws_vpc" "main" {
   # checkov:skip=CKV2_AWS_11: "VPC flow logging disabled to optimize demo lab costs"
   # checkov:skip=CKV2_AWS_12: "Default security group restrictions managed at account level"
@@ -25,7 +40,7 @@ resource "aws_subnet" "public" {
   count                   = length(var.public_subnet_cidrs)
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_cidrs[count.index]
-  availability_zone       = var.availability_zones[count.index]
+  availability_zone       = local.selected_availability_zones[count.index]
   map_public_ip_on_launch = true
 
   tags = {

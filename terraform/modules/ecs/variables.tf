@@ -39,6 +39,17 @@ variable "app_secret_arn" {
   description = "Secrets Manager ARN containing JWT_SECRET and ADMIN_PASSWORD JSON keys"
 }
 
+variable "service_desired_count" {
+  type        = number
+  description = "Desired task count for each PROD ECS service; use 0 during first-account image bootstrap"
+  default     = 1
+
+  validation {
+    condition     = var.service_desired_count >= 0
+    error_message = "service_desired_count must be zero or greater."
+  }
+}
+
 variable "prod_target_groups" {
   type = object({
     frontend = string

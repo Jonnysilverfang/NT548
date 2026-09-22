@@ -3,13 +3,14 @@ set -eo pipefail
 
 AWS_REGION="${AWS_REGION:-ap-southeast-1}"
 
-# Auto-discover ALB DNS if BASE_URL is not set, set to placeholder, or points to hardcoded default
-if [ -z "$BASE_URL" ] || [ "$BASE_URL" = "https://kiendev.site" ] || [[ "$BASE_URL" == *"775519618"* ]]; then
+# Auto-discover the account-local ALB when BASE_URL is not injected by CodeBuild.
+if [ -z "${BASE_URL:-}" ]; then
     DISCOVERED_ALB=$(aws elbv2 describe-load-balancers --names nt548-shared-alb --region "$AWS_REGION" --query "LoadBalancers[0].DNSName" --output text 2>/dev/null || true)
     if [ -n "$DISCOVERED_ALB" ] && [ "$DISCOVERED_ALB" != "None" ]; then
         BASE_URL="http://$DISCOVERED_ALB"
     else
-        BASE_URL="http://nt548-shared-alb-775519618.ap-southeast-1.elb.amazonaws.com"
+        echo "❌ ERROR: BASE_URL is unset and nt548-shared-alb could not be discovered in $AWS_REGION."
+        exit 1
     fi
 fi
 COOKIE_HEADER="Cookie: nt548-test=true"

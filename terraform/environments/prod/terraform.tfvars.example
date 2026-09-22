@@ -17,3 +17,7 @@ github_repository     = "your-github-user/NT548"
 # Initial baseline Docker image tag for ECS task definitions before first pipeline build:
 # Once CodePipeline builds images, ECS task definitions update automatically via rolling deployment.
 app_image_tag         = "latest"
+
+# First deployment only: keep services at 0 until PROD images are built.
+# After the first successful AppBuild/AppDeploy, change to 1 and apply again.
+service_desired_count = 0
