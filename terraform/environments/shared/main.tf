@@ -68,4 +68,5 @@ module "iam" {
   source                = "../../modules/iam"
   project_name          = var.project_name
   github_connection_arn = var.github_connection_arn
+  github_repository     = var.github_repository
 }

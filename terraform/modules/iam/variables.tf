@@ -20,3 +20,8 @@ variable "github_connection_arn" {
   type        = string
   description = "CodeConnections ARN used by the production source action"
 }
+
+variable "github_repository" {
+  type        = string
+  description = "GitHub repository allowed through CodeConnections (Owner/Repo)"
+}

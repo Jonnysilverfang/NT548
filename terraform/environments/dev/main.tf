@@ -107,6 +107,20 @@ resource "aws_codepipeline" "dev" {
   pipeline_type  = "V2"
   execution_mode = "QUEUED"
 
+  trigger {
+    provider_type = "CodeStarSourceConnection"
+
+    git_configuration {
+      source_action_name = "GitHubDevSource"
+
+      push {
+        branches {
+          includes = ["dev"]
+        }
+      }
+    }
+  }
+
   artifact_store {
     location = data.terraform_remote_state.shared.outputs.artifact_bucket_name
     type     = "S3"
@@ -128,7 +142,7 @@ resource "aws_codepipeline" "dev" {
         ConnectionArn    = var.github_connection_arn
         FullRepositoryId = var.github_repository
         BranchName       = "dev"
-        DetectChanges    = "true"
+        DetectChanges    = "false"
       }
     }
   }

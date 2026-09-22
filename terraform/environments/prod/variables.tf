@@ -13,7 +13,7 @@ variable "approval_email" {
 variable "github_connection_arn" {
   type        = string
   description = "CodeStar/CodeConnection ARN for GitHub"
-  default     = "arn:aws:codeconnections:ap-southeast-1:404063515739:connection/cf889280-4f49-4954-9757-5d45f05b3ccc"
+  default     = "arn:aws:codeconnections:ap-southeast-1:404063515739:connection/043741f8-f157-4ed4-8cb7-9006c8b02a4d"
 }
 
 variable "github_repository" {
