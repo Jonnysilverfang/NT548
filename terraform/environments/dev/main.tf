@@ -142,7 +142,7 @@ resource "aws_codepipeline" "dev" {
         ConnectionArn    = var.github_connection_arn
         FullRepositoryId = var.github_repository
         BranchName       = "dev"
-        DetectChanges    = "true"
+        DetectChanges    = "false"
       }
     }
   }
