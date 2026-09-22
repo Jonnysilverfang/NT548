@@ -302,7 +302,7 @@ resource "aws_iam_policy" "codebuild_prod_policy" {
       {
         Effect = "Allow"
         Action = [
-          "codestar-connections:PassConnection"
+          "codeconnections:PassConnection"
         ]
         Resource = var.github_connection_arn
       }
@@ -362,9 +362,14 @@ resource "aws_iam_policy" "codepipeline_dev_policy" {
       {
         Effect = "Allow"
         Action = [
-          "codestar-connections:UseConnection"
+          "codeconnections:UseConnection"
         ]
-        Resource = "*"
+        Resource = var.github_connection_arn
+        Condition = {
+          StringEquals = {
+            "codeconnections:FullRepositoryId" = var.github_repository
+          }
+        }
       }
     ]
   })
@@ -429,9 +434,14 @@ resource "aws_iam_policy" "codepipeline_prod_policy" {
       {
         Effect = "Allow"
         Action = [
-          "codestar-connections:UseConnection"
+          "codeconnections:UseConnection"
         ]
-        Resource = "*"
+        Resource = var.github_connection_arn
+        Condition = {
+          StringEquals = {
+            "codeconnections:FullRepositoryId" = var.github_repository
+          }
+        }
       },
       {
         Effect = "Allow"
