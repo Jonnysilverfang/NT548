@@ -27,3 +27,14 @@ variable "app_image_tag" {
   description = "Baseline Docker image tag for initial ECS tasks"
   default     = "e15bfa1"
 }
+
+variable "service_desired_count" {
+  type        = number
+  description = "Desired task count for each PROD service; set to 0 until initial PROD images exist"
+  default     = 1
+
+  validation {
+    condition     = var.service_desired_count >= 0
+    error_message = "service_desired_count must be zero or greater."
+  }
+}

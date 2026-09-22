@@ -20,7 +20,7 @@ resource "aws_codebuild_project" "dev_build" {
 
     environment_variable {
       name  = "AWS_REGION"
-      value = "ap-southeast-1"
+      value = var.aws_region
     }
   }
 
@@ -63,11 +63,11 @@ resource "aws_codebuild_project" "dev_deploy_test" {
 
     environment_variable {
       name  = "AWS_REGION"
-      value = "ap-southeast-1"
+      value = var.aws_region
     }
     environment_variable {
       name  = "BASE_URL"
-      value = "https://kiendev.site"
+      value = var.dev_base_url
     }
   }
 
@@ -111,7 +111,7 @@ resource "aws_codebuild_project" "prod_build" {
 
     environment_variable {
       name  = "AWS_REGION"
-      value = "ap-southeast-1"
+      value = var.aws_region
     }
   }
 
@@ -154,7 +154,7 @@ resource "aws_codebuild_project" "prod_deploy" {
 
     environment_variable {
       name  = "AWS_REGION"
-      value = "ap-southeast-1"
+      value = var.aws_region
     }
   }
 

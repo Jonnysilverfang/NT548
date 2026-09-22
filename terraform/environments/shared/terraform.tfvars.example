@@ -10,3 +10,6 @@ domain_name           = "yourdomain.com" # Optional: Apex domain if planning to 
 # GitHub CodeStar / CodeConnections connection ARN created in your AWS Account:
 # (AWS Console -> CodePipeline -> Settings -> Connections -> Create connection)
 github_connection_arn = "arn:aws:codestar-connections:ap-southeast-1:<YOUR_ACCOUNT_ID>:connection/<YOUR_CONNECTION_ID>"
+
+# Repository authorized in the GitHub App installation (case-sensitive Owner/Repo)
+github_repository     = "your-github-user/NT548"
