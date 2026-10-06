@@ -43,9 +43,14 @@ output "order_service_name" {
   value       = module.ecs.order_service_name
 }
 
-output "prod_pipeline_name" {
-  description = "Name of the PROD CodePipeline"
-  value       = aws_codepipeline.prod.name
+output "prod_infra_pipeline_name" {
+  description = "Name of the PROD Infrastructure CodePipeline"
+  value       = aws_codepipeline.infra.name
+}
+
+output "prod_app_pipeline_name" {
+  description = "Name of the PROD Application CodePipeline"
+  value       = aws_codepipeline.app.name
 }
 
 output "infra_approval_topic_arn" {

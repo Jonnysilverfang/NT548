@@ -15,7 +15,7 @@ STAGE_NAME = os.environ.get("APPROVAL_STAGE_NAME", "SecurityGate")
 ACTION_NAME = os.environ.get("APPROVAL_ACTION_NAME", "SecurityGateApproval")
 MAX_ALLOWED_CRITICAL = int(os.environ.get("MAX_ALLOWED_CRITICAL", "0"))
 MAX_ALLOWED_HIGH = int(os.environ.get("MAX_ALLOWED_HIGH", "0"))
-REQUIRED_REPOSITORIES = (
+DEV_REPOSITORIES = (
     "nt548-dev-user",
     "nt548-dev-product",
     "nt548-dev-order",
@@ -26,8 +26,9 @@ REQUIRED_REPOSITORIES = (
 def lambda_handler(event, context):
     """EventBridge handler for ECR image scan completion event on DEV repositories.
 
-    Evaluates vulnerability thresholds and automatically approves or rejects the
-    DEV pipeline's manual approval action.
+    Evaluates vulnerability thresholds for all services that were built with the
+    target image tag (supports selective change detection) and automatically
+    approves or rejects the DEV pipeline's manual approval action.
     """
     logger.info("Received event: %s", json.dumps(event))
 
@@ -45,55 +46,66 @@ def lambda_handler(event, context):
 
     image_tag = image_tags[0]
     results = {}
-    pending = list(REQUIRED_REPOSITORIES)
+    pending = []
 
-    # An event is emitted per repository. Approval is valid only after the same
-    # commit tag has completed scanning in all four repositories.
-    for attempt in range(6):
+    # Polling loop: evaluate only repositories where image_tag actually exists
+    # (services that were changed and built for this commit).
+    for attempt in range(8):
         pending = []
         results = {}
-        for required_repo in REQUIRED_REPOSITORIES:
+
+        for dev_repo in DEV_REPOSITORIES:
             try:
                 response = ecr_client.describe_image_scan_findings(
-                    repositoryName=required_repo,
+                    repositoryName=dev_repo,
                     imageId={"imageTag": image_tag},
                     maxResults=100,
                 )
                 status = response.get("imageScanStatus", {}).get("status")
                 if status != "COMPLETE":
-                    pending.append(required_repo)
+                    pending.append(dev_repo)
                     continue
+
                 counts = response.get("imageScanFindings", {}).get(
                     "findingSeverityCounts", {}
                 )
-                results[required_repo] = {
+                results[dev_repo] = {
                     "CRITICAL": int(counts.get("CRITICAL", 0)),
                     "HIGH": int(counts.get("HIGH", 0)),
                     "MEDIUM": int(counts.get("MEDIUM", 0)),
                     "LOW": int(counts.get("LOW", 0)),
                 }
             except ecr_client.exceptions.ImageNotFoundException:
-                pending.append(required_repo)
+                # Service was unchanged and not built in this run
+                logger.info("Tag %s not found in %s (unchanged component)", image_tag, dev_repo)
+                continue
             except ecr_client.exceptions.ScanNotFoundException:
-                pending.append(required_repo)
+                # Tag exists but scan not yet indexed
+                pending.append(dev_repo)
+            except Exception as e:
+                logger.warning("Error checking scan for %s: %s", dev_repo, e)
 
-        if not pending:
+        if not pending and results:
             break
+
         logger.info(
-            "Waiting for tag %s scans in %s (attempt %d/6)",
+            "Waiting for tag %s scans in %s (attempt %d/8)",
             image_tag,
-            pending,
+            pending or "<discovering>",
             attempt + 1,
         )
         time.sleep(3)
 
-    if pending:
+    if pending or not results:
+        logger.info("Still pending scans or no repositories discovered with tag %s", image_tag)
         return {
             "status": "WAITING",
             "image_tag": image_tag,
             "pending_repositories": pending,
+            "evaluated_repositories": list(results.keys()),
         }
 
+    # Evaluate pass/fail for all repositories that were built
     passed = all(
         counts["CRITICAL"] <= MAX_ALLOWED_CRITICAL
         and counts["HIGH"] <= MAX_ALLOWED_HIGH
@@ -106,12 +118,13 @@ def lambda_handler(event, context):
     )
     summary = (
         f"Automated Security Gate {approval_status} for tag {image_tag}. "
-        f"All required repositories evaluated. {repository_summary}"
+        f"Evaluated components: {repository_summary}"
     )
+    logger.info("Security Gate Evaluation: %s", summary)
 
-    # Poll for active approval token (handles race condition between ECR scan and CodePipeline transition)
+    # Poll for active approval token in CodePipeline
     token = None
-    for attempt in range(10):
+    for attempt in range(12):
         try:
             pipeline_state = codepipeline_client.get_pipeline_state(name=DEV_PIPELINE_NAME)
             for stage in pipeline_state.get("stageStates", []):
@@ -129,7 +142,12 @@ def lambda_handler(event, context):
             logger.info("Found pending approval token on attempt %d: %s", attempt + 1, token)
             break
 
-        logger.info("Waiting for pipeline %s to enter %s stage (attempt %d/10)...", DEV_PIPELINE_NAME, STAGE_NAME, attempt + 1)
+        logger.info(
+            "Waiting for pipeline %s to enter %s stage (attempt %d/12)...",
+            DEV_PIPELINE_NAME,
+            STAGE_NAME,
+            attempt + 1,
+        )
         time.sleep(3)
 
     if not token:

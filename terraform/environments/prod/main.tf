@@ -96,6 +96,11 @@ resource "aws_codebuild_project" "infra_plan" {
     }
 
     environment_variable {
+      name  = "TF_VAR_github_app_repository"
+      value = var.github_app_repository
+    }
+
+    environment_variable {
       name  = "TF_VAR_app_image_tag"
       value = var.app_image_tag
     }
@@ -165,6 +170,11 @@ resource "aws_codebuild_project" "infra_apply" {
     environment_variable {
       name  = "TF_VAR_github_repository"
       value = var.github_repository
+    }
+
+    environment_variable {
+      name  = "TF_VAR_github_app_repository"
+      value = var.github_app_repository
     }
 
     environment_variable {
@@ -239,10 +249,10 @@ resource "aws_codebuild_project" "app_build" {
   }
 }
 
-# 4. PROD CodePipeline (7 Sequential Stages: Source -> InfraPlan -> InfraApproval -> InfraApply -> AppBuild -> ProductionApproval -> AppDeploy)
-resource "aws_codepipeline" "prod" {
+# 4. PROD Infra CodePipeline (Source -> InfraPlan -> InfraApproval -> InfraApply)
+resource "aws_codepipeline" "infra" {
   # checkov:skip=CKV_AWS_219: "The versioned private artifact bucket uses S3 managed encryption; a customer-managed KMS key is deferred for lab cost control"
-  name           = "nt548-prod-pipeline"
+  name           = "nt548-prod-infra-pipeline"
   role_arn       = data.terraform_remote_state.shared.outputs.codepipeline_prod_role_arn
   pipeline_type  = "V2"
   execution_mode = "QUEUED"
@@ -335,6 +345,61 @@ resource "aws_codepipeline" "prod" {
 
       configuration = {
         ProjectName = aws_codebuild_project.infra_apply.name
+      }
+    }
+  }
+
+  tags = {
+    Name        = "nt548-prod-infra-pipeline"
+    Environment = "prod"
+    Project     = "NT548"
+  }
+}
+
+# 5. PROD App CodePipeline (Source -> AppBuild -> ProductionApproval -> AppDeploy)
+resource "aws_codepipeline" "app" {
+  # checkov:skip=CKV_AWS_219: "The versioned private artifact bucket uses S3 managed encryption; a customer-managed KMS key is deferred for lab cost control"
+  name           = "nt548-prod-app-pipeline"
+  role_arn       = data.terraform_remote_state.shared.outputs.codepipeline_prod_role_arn
+  pipeline_type  = "V2"
+  execution_mode = "QUEUED"
+
+  trigger {
+    provider_type = "CodeStarSourceConnection"
+
+    git_configuration {
+      source_action_name = "GitHubAppMainSource"
+
+      push {
+        branches {
+          includes = ["main"]
+        }
+      }
+    }
+  }
+
+  artifact_store {
+    location = data.terraform_remote_state.shared.outputs.artifact_bucket_name
+    type     = "S3"
+  }
+
+  stage {
+    name = "Source"
+
+    action {
+      name             = "GitHubAppMainSource"
+      category         = "Source"
+      owner            = "AWS"
+      provider         = "CodeStarSourceConnection"
+      version          = "1"
+      output_artifacts = ["SourceArtifact"]
+      namespace        = "SourceVariables"
+
+      configuration = {
+        ConnectionArn    = var.github_connection_arn
+        FullRepositoryId = var.github_app_repository
+        BranchName       = "main"
+        DetectChanges    = "false"
       }
     }
   }
@@ -444,7 +509,7 @@ resource "aws_codepipeline" "prod" {
   }
 
   tags = {
-    Name        = "nt548-prod-pipeline"
+    Name        = "nt548-prod-app-pipeline"
     Environment = "prod"
     Project     = "NT548"
   }

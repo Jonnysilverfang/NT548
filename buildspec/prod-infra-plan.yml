@@ -9,7 +9,7 @@ phases:
     runtime-versions:
       python: 3.12
     commands:
-      - "echo Installing Terraform and Checkov"
+      - "echo Phase 1 Installing Tooling"
       - "curl --fail --silent --show-error --location -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
       - "unzip -q -o /tmp/terraform.zip -d /usr/local/bin"
       - "rm -f /tmp/terraform.zip"
@@ -17,29 +17,38 @@ phases:
       - "pip3 install --upgrade pip"
       - "pip3 install checkov"
       - "checkov --version"
+      - "chmod +x scripts/*.sh"
   pre_build:
     commands:
-      - "echo Step 1 Terraform Format Check"
-      - "terraform fmt -check -recursive"
+      - "echo Phase 2 Infrastructure Change Detection"
+      - "bash scripts/detect-infra-changes.sh"
+      - ". ./infra_changes.env"
   build:
     commands:
-      - "echo Step 2 Terraform Init and Validate"
-      - "cd terraform/environments/prod"
-      - "ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)"
-      - "terraform init -backend-config=\"bucket=nt548-terraform-state-${ACCOUNT_ID}\" -backend-config=\"region=${AWS_REGION}\" -input=false"
-      - "terraform validate"
-      - "cd ../../.."
-      - "echo Step 3 Checkov IaC Security Scan"
-      - "checkov --config-file .checkov.yml"
-      - "echo Step 4 Terraform Plan"
-      - "cd terraform/environments/prod"
-      - "terraform plan -out=tfplan -input=false"
-      - "terraform show -no-color tfplan > tfplan.txt"
-      - "echo Plan generated successfully"
-      - "head -n 50 tfplan.txt"
+      - "echo Phase 3 Conditional Plan Execution"
+      - "rm -f skip_infra.flag"
+      - >-
+        if [ "$INFRA_CHANGED" = "false" ]; then
+          echo "[SKIP] Documentation-only change detected ($DOCS_ONLY). Skipping Terraform plan & apply."
+          touch skip_infra.flag
+          echo "No infrastructure changes required. (Documentation-only commit)" > tfplan.txt
+        else
+          echo "Step 3.1 Format Check"
+          bash scripts/terraform-pipeline.sh fmt
+          echo "Step 3.2 Validate PROD Configuration"
+          bash scripts/terraform-pipeline.sh validate prod
+          echo "Step 3.3 Security Scan with Checkov"
+          bash scripts/terraform-pipeline.sh checkov
+          echo "Step 3.4 Plan PROD Infrastructure"
+          bash scripts/terraform-pipeline.sh plan prod
+        fi
 
 artifacts:
   files:
     - 'buildspec/prod-infra-apply.yml'
     - 'terraform/**/*'
-    - 'terraform/environments/prod/.terraform.lock.hcl'
+    - 'scripts/**/*'
+    - 'tfplan.txt'
+    - 'skip_infra.flag'
+    - 'infra_changes.json'
+    - 'infra_changes.env'

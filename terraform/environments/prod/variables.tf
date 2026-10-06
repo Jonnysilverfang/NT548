@@ -18,8 +18,14 @@ variable "github_connection_arn" {
 
 variable "github_repository" {
   type        = string
-  description = "GitHub repository (Owner/Repo)"
+  description = "GitHub Infrastructure repository (Owner/Repo)"
   default     = "Jonnysilverfang/NT548"
+}
+
+variable "github_app_repository" {
+  type        = string
+  description = "GitHub Application repository (Owner/Repo)"
+  default     = "Kien-devops/NT548-APP"
 }
 
 variable "app_image_tag" {

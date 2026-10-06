@@ -37,3 +37,9 @@ variable "github_repository" {
   description = "GitHub repository (Owner/Repo)"
   default     = "Jonnysilverfang/NT548"
 }
+
+variable "github_app_repository" {
+  type        = string
+  description = "GitHub App repository (Owner/Repo)"
+  default     = "Kien-devops/NT548-APP"
+}

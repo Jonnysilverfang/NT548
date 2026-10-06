@@ -7,17 +7,19 @@ env:
 phases:
   install:
     commands:
-      - "echo Checking Terraform binary"
+      - "echo Phase 1 Preparing Terraform"
       - "curl --fail --silent --show-error --location -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
       - "unzip -q -o /tmp/terraform.zip -d /usr/local/bin"
       - "rm -f /tmp/terraform.zip"
       - "terraform --version"
+      - "chmod +x scripts/*.sh"
   build:
     commands:
-      - "echo Applying Approved Terraform Plan"
-      - "cd terraform/environments/prod"
-      - "ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)"
-      - "terraform init -backend-config=\"bucket=nt548-terraform-state-${ACCOUNT_ID}\" -backend-config=\"region=${AWS_REGION}\" -input=false"
-      - "echo Applying tfplan generated in InfraPlan stage"
-      - "terraform apply -auto-approve tfplan"
-      - "echo PROD infrastructure successfully applied"
+      - "echo Phase 2 Applying Infrastructure Changes"
+      - >-
+        if [ -f skip_infra.flag ]; then
+          echo "[SKIP] Infrastructure apply skipped because no infrastructure changes were detected."
+          exit 0
+        fi
+      - "bash scripts/terraform-pipeline.sh apply prod"
+      - "echo PROD infrastructure successfully updated"

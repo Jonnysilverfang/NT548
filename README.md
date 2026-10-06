@@ -1,106 +1,163 @@
-# NT548 — AWS ECS Microservices & Multi-Environment DevSecOps
+# NT548 — AWS ECS Microservices & Multi-Environment DevSecOps (Infrastructure)
 
-Nền tảng microservices chạy trên Amazon ECS Fargate, được quản lý bằng Terraform và triển khai qua hai AWS CodePipeline độc lập:
+> 📌 **Phân tách Repository**:
+> - **Repository Hạ tầng (Infra)**: [Jonnysilverfang/NT548](https://github.com/Jonnysilverfang/NT548) (Repository hiện tại)
+> - **Repository Ứng dụng (Application)**: [Kien-devops/NT548-APP](https://github.com/Kien-devops/NT548-APP)
 
-- `dev`: build, test, scan, triển khai môi trường tạm thời, smoke test và tự dọn dẹp.
-- `main`: lập kế hoạch hạ tầng, phê duyệt thủ công, build/scan image và rolling deployment lên PROD.
+Nền tảng microservices chạy trên Amazon ECS Fargate, được quản lý bằng Terraform và triển khai qua các AWS CodePipeline độc lập:
 
-Repository được thiết kế để triển khai lặp lại trên **một AWS account khác** mà không dùng lại state, ARN hoặc tài nguyên của account hiện tại. Mỗi account có state bucket, CodeConnections, IAM roles, ECR repositories và pipelines riêng.
+- `nt548-dev-pipeline`: build, test, scan, triển khai môi trường tạm thời, smoke test và tự dọn dẹp (theo dõi `Kien-devops/NT548-APP:dev`).
+- `nt548-prod-infra-pipeline`: lập kế hoạch hạ tầng Terraform, phê duyệt thủ công, apply (theo dõi `Jonnysilverfang/NT548:main`).
+- `nt548-prod-app-pipeline`: build/scan ECR, phê duyệt thủ công và rolling deployment lên ECS PROD (theo dõi `Kien-devops/NT548-APP:main`).
 
 > Đây là kiến trúc **production-like phục vụ học tập/lab**. Cấu hình mặc định ưu tiên chi phí thấp: public subnets, Fargate public IP, ALB HTTP và một task cho mỗi PROD service. Xem [Giới hạn và hướng nâng cấp](#giới-hạn-và-hướng-nâng-cấp) trước khi dùng cho production thật.
 
-## Kiến trúc
+## Kiến trúc phân tách 2 Repository
+
+Kiến trúc được chia tách hoàn toàn giữa **Hạ tầng (Infra as Code)** và **Ứng dụng (Microservices Application)**, được liên kết qua AWS CodeConnections và 3 CodePipelines độc lập:
 
 ```text
-Developer
-   │ git push dev / main
-   ▼
-GitHub App + AWS CodeConnections
-   │ WebhookV2
-   ├──────────────────────────────┐
-   ▼                              ▼
-DEV CodePipeline                  PROD CodePipeline
-   │                              │
-   ├─ Unit tests                  ├─ Terraform fmt / validate
-   ├─ Docker build                ├─ Checkov + saved tfplan
-   ├─ ECR scan                    ├─ Manual infrastructure approval
-   ├─ Automated security gate     ├─ Apply exact approved plan
-   ├─ Ephemeral ECS deployment    ├─ Unit tests + Docker build
-   ├─ Cookie-routed smoke tests   ├─ ECR scan
-   └─ Guaranteed cleanup          ├─ Manual application approval
-                                  └─ ECS rolling deployment
-                                                   │
-Internet ──► Shared ALB ──► ECS Fargate ──► CloudWatch Logs
-                    │
-                    ├─ Frontend :80
-                    ├─ User     :5001
-                    ├─ Product  :5002
-                    └─ Order    :5003
+                                     Developer
+                                         │
+                 ┌───────────────────────┴───────────────────────┐
+                 │ git push (Infra)                              │ git push (App)
+                 ▼                                               ▼
+       Repo Infra: NT548                                Repo App: NT548-APP
+    (Jonnysilverfang/NT548)                           (Kien-devops/NT548-APP)
+                 │                                               │
+                 │ branch main                                   ├──────────────────────────────┐
+                 ▼                                               │ branch dev                   │ branch main
+   AWS CodeConnections (WebhookV2)                               ▼                              ▼
+                 │                                 AWS CodeConnections (WebhookV2) AWS CodeConnections (WebhookV2)
+                 ▼                                               │                              │
+     nt548-prod-infra-pipeline                                   ▼                              ▼
+   ┌───────────────────────────┐                         nt548-dev-pipeline             nt548-prod-app-pipeline
+   │ 1. Source (NT548:main)    │                       ┌────────────────────┐         ┌─────────────────────────┐
+   │ 2. Terraform Plan&Checkov │                       │ 1. Source (dev)    │         │ 1. Source (main)        │
+   │ 3. Manual Infra Approval  │                       │ 2. Unit Tests      │         │ 2. Unit Tests           │
+   │ 4. Terraform Apply        │                       │ 3. Build & Scan ECR│         │ 3. Build & Scan ECR     │
+   └─────────────┬─────────────┘                       │ 4. Security Gate   │         │ 4. Manual App Approval  │
+                 │                                     │ 5. Ephemeral ECS   │         │ 5. ECS Rolling Deploy   │
+                 │                                     │ 6. Smoke Tests     │         └────────────┬────────────┘
+                 │ Provision / Update                  │ 7. Auto Cleanup    │                      │ Deploy to
+                 ▼                                     └────────────────────┘                      ▼
+     Shared AWS Infrastructure ◄───────────────────────────────────────────────────────────────────┘
+     (VPC, Subnets, ECR, IAM, ALB, ECS Cluster: nt548-cluster)
+                 │
+                 ├──► Shared ALB (Internet-facing HTTP :80)
+                 │        ├─ Path /           ──► Frontend Service (:80)
+                 │        ├─ Path /api/users  ──► User Service     (:5001)
+                 │        ├─ Path /api/products ─► Product Service  (:5002)
+                 │        └─ Path /api/orders ──► Order Service    (:5003)
+                 │
+                 └──► ECS Fargate Tasks ──► CloudWatch Logs
 ```
 
-### Application services
+### Application services (Lưu trữ tại repository [NT548-APP](https://github.com/Kien-devops/NT548-APP))
 
 | Service | Runtime | Port | Responsibility |
 |---|---|---:|---|
-| `frontend` | Nginx | 80 | Static UI, health endpoint và reverse proxy |
+| `frontend` | Nginx SPA | 80 | Static UI, health endpoint và reverse proxy |
 | `be-user-service` | Node.js/Express | 5001 | Login, password hashing và JWT issuance |
 | `be-product-service` | Python/Flask | 5002 | Product API được bảo vệ bằng JWT |
 | `be-order-service` | Node.js/Express | 5003 | Order API được bảo vệ bằng JWT |
 
-## CI/CD flow
+---
 
-### DEV — ephemeral validation
+## Chi tiết 3 Pipelines CI/CD
 
-```text
-push dev
-  → Source (WebhookV2)
-  → Unit tests + immutable image tag = commit SHA
-  → Push 4 DEV images to ECR
-  → ECR vulnerability scans
-  → Lambda gate: CRITICAL=0 và HIGH=0
-  → Create temporary ECS services/target groups/listener rules
-  → Wait until all services are stable
-  → Cookie-routed API smoke tests
-  → Cleanup rules, target groups và services
-```
+### 1. `nt548-prod-infra-pipeline` (Quản lý Hạ tầng)
+- **Repository nguồn:** `Jonnysilverfang/NT548` (nhánh `main`)
+- **Quy trình thực thi:**
+  ```text
+  push main (NT548)
+    → Source (WebhookV2 qua AWS CodeConnections)
+    → InfraPlan: Terraform fmt, validate, Checkov SAST scan, tạo và lưu tfplan
+    → InfraApproval: Quản trị viên nhận thông báo SNS và review tfplan
+    → InfraApply: Áp dụng chính xác tfplan đã duyệt lên môi trường AWS
+  ```
 
-DEV traffic dùng header `Cookie: nt548-test=true`, vì vậy có thể kiểm thử trên shared ALB mà không ghi đè default PROD routes.
+### 2. `nt548-dev-pipeline` (Kiểm thử Ứng dụng Tự động)
+- **Repository nguồn:** `Kien-devops/NT548-APP` (nhánh `dev`)
+- **Quy trình thực thi:**
+  ```text
+  push dev (NT548-APP)
+    → Source (WebhookV2 qua AWS CodeConnections)
+    → BuildAndScan: Unit tests + Build 4 Docker images với tag commit SHA + Push DEV ECR
+    → SecurityGate: AWS Lambda tự động kiểm tra ECR scan (bắt buộc CRITICAL=0, HIGH=0)
+    → DeployAndTest: Tạo ECS services/target groups tạm thời (Cookie: nt548-test=true)
+    → Chạy toàn bộ bộ API Smoke tests và tự động dọn dẹp (cleanup)
+  ```
 
-### PROD — infrastructure and application promotion
+### 3. `nt548-prod-app-pipeline` (Triển khai Ứng dụng Production)
+- **Repository nguồn:** `Kien-devops/NT548-APP` (nhánh `main`)
+- **Quy trình thực thi:**
+  ```text
+  push main (NT548-APP)
+    → Source (WebhookV2 qua AWS CodeConnections)
+    → AppBuild: Unit tests + Build 4 Docker images + Push PROD ECR + Quét lỗ hổng
+    → ProductionApproval: Phê duyệt thủ công dựa trên kết quả ECR scan (C=0, H=0)
+---
 
-```text
-push main
-  → Source (WebhookV2)
-  → Terraform format, validate, Checkov and plan
-  → Manual approval of the saved plan
-  → Apply the exact approved tfplan
-  → Unit tests + build 4 images
-  → ECR scan gate: CRITICAL=0 và HIGH=0
-  → Manual application approval
-  → Four native ECS rolling deploy actions
-```
+## Cơ chế Change Detection & Thành phần CI/CD Tái sử dụng
 
-Pipeline dùng `V2` + `QUEUED`, explicit branch filters và `DetectChanges=false`. Điều này tránh chạy trùng giữa default source detection và V2 Git trigger.
+### 1. Change Detection cho Hạ tầng (`scripts/detect-infra-changes.sh`)
+Pipeline hạ tầng được trang bị bộ nhận diện thay đổi Git thông minh nhằm tối ưu chi phí CodeBuild và thời gian chờ:
+- **Tài liệu thuần túy (`README.md`, `*.md`, `docs/*`)**: Đánh dấu `INFRA_CHANGED=false` & `DOCS_ONLY=true` -> **Bỏ qua (SKIP)** các bước `terraform plan` và `terraform apply`.
+- **Hạ tầng PROD (`terraform/environments/prod/*`)**: Đánh dấu `PROD_CHANGED=true` -> Kích hoạt quy trình plan/apply cho môi trường PROD.
+- **Hạ tầng DEV (`terraform/environments/dev/*`)**: Đánh dấu `DEV_CHANGED=true`.
+- **Modules dùng chung (`terraform/modules/*`, `terraform/environments/shared/*`, `.checkov.yml`)**: Tự động đánh dấu toàn bộ môi trường phụ thuộc (`PROD_CHANGED=true`, `DEV_CHANGED=true`) để chạy plan đầy đủ mà không bỏ sót ảnh hưởng.
+- **Nguyên tắc an toàn Terraform (Terraform Safety)**: Tuyệt đối **không** dùng `terraform apply -target=module.*` trong CI/CD. Toàn bộ dependency graph của Terraform được duy trì nguyên vẹn ở cấp độ Root Module.
 
-## Repository layout
+### 2. Thành phần Runner tái sử dụng (`scripts/terraform-pipeline.sh`)
+Thay vì lặp lại các lệnh trong từng phase buildspec, quy trình được đóng gói thành script chuẩn hóa:
+- `./scripts/terraform-pipeline.sh fmt`: Kiểm tra định dạng HCL trên toàn bộ repo.
+- `./scripts/terraform-pipeline.sh checkov`: Quét phân tích tĩnh bảo mật IaC (SAST).
+- `./scripts/terraform-pipeline.sh validate <env>`: Khởi tạo backend và kiểm tra tính hợp lệ cú pháp.
+- `./scripts/terraform-pipeline.sh plan <env>`: Tạo và lưu file thực thi `tfplan` & `tfplan.txt`.
+- `./scripts/terraform-pipeline.sh apply <env>`: Áp dụng chính xác file `tfplan` đã được phê duyệt qua SNS.
+
+---
+
+## Các kịch bản kiểm thử mẫu (Example Scenarios)
+
+### Kịch bản A: Chỉ sửa code `be-product-service/app.py` (Repo App)
+- **Hạ tầng (`NT548`)**: Không bị kích hoạt (hoặc skip nếu push nhầm vào repo hạ tầng).
+- **Ứng dụng (`NT548-APP`)**:
+  - `FRONTEND_CHANGED=false`, `USER_CHANGED=false`, `ORDER_CHANGED=false`.
+  - **Duy nhất `PRODUCT_CHANGED=true`**.
+  - Chỉ chạy test, build Docker image, push ECR và quét lỗ hổng cho `be-product-service`.
+  - Các service khác giữ nguyên image hiện tại, tiết kiệm > 75% tài nguyên CodeBuild.
+
+### Kịch bản B: Chỉ sửa tài liệu `README.md` hoặc `*.md`
+- **Hạ tầng (`NT548`)**: Change detector xác định `DOCS_ONLY=true` -> **SKIP** toàn bộ Terraform Plan & Apply. Không sinh chi phí hay thông báo approval SNS rác.
+- **Ứng dụng (`NT548-APP`)**: Change detector xác định `DOCS_ONLY=true` -> **SKIP** toàn bộ Test, Build và Deploy.
+
+### Kịch bản C: Thay đổi module Terraform chung (`terraform/modules/vpc/*` hoặc `modules/alb/*`)
+- **Hạ tầng (`NT548`)**: Change detector xác định `MODULES_CHANGED=true` -> Tự động kích hoạt Terraform Plan cho mọi môi trường tiêu thụ module để bảo đảm an toàn toàn diện cho hệ thống.
+
+### Kịch bản D: Thay đổi script CI/CD dùng chung (`scripts/*`, `buildspec/*`)
+- **Hạ tầng (`NT548`)**: Chạy kiểm tra và lập kế hoạch cho toàn bộ các môi trường hạ tầng.
+- **Ứng dụng (`NT548-APP`)**: Đánh dấu `SHARED_CHANGED=true` -> Toàn bộ 4 microservices được kiểm thử và validate đồng thời để loại trừ nguy cơ hỏng pipeline chung.
+
+## Cấu trúc Repository Hạ tầng (NT548)
 
 ```text
 .
-├── frontend/                       # Nginx SPA
-├── be-user-service/                # Node.js authentication API
-├── be-product-service/             # Python product API
-├── be-order-service/               # Node.js order API
-├── buildspec/                      # CodeBuild phase definitions
-├── scripts/                        # Build, scan, ephemeral deploy and cleanup
-├── lambda/security_gate/           # Automated ECR scan approval gate
+├── buildspec/                      # CodeBuild phase definitions cho hạ tầng
+│   ├── prod-infra-plan.yml         # Terraform plan & Checkov security scan
+│   └── prod-infra-apply.yml        # Terraform apply approved tfplan
+├── lambda/security_gate/           # Mã nguồn Lambda Security Gate tự động duyệt ECR scan
 └── terraform/
-    ├── bootstrap/                  # Per-account remote-state S3 bucket
+    ├── bootstrap/                  # Remote-state S3 bucket cho từng AWS account
     ├── environments/
-    │   ├── shared/                 # VPC, ALB, ECR, IAM and artifact bucket
-    │   ├── dev/                    # DEV pipeline and ephemeral validation
-    │   └── prod/                   # PROD ECS and seven-stage pipeline
-    └── modules/                    # Reusable Terraform modules
+    │   ├── shared/                 # VPC, ALB, ECR repositories, IAM roles, S3 artifacts
+    │   ├── dev/                    # DEV pipeline và cấu hình Lambda Gate
+    │   └── prod/                   # PROD ECS services và 2 pipelines (Infra + App)
+    └── modules/                    # Reusable Terraform modules (alb, ecr, ecs, iam, vpc, sns)
 ```
+
+> 💡 *Toàn bộ mã nguồn ứng dụng (microservices, Dockerfiles, docker-compose, scripts kiểm thử) được lưu trữ tại [Kien-devops/NT548-APP](https://github.com/Kien-devops/NT548-APP).*
 
 ## Tái sử dụng trên AWS account khác
 

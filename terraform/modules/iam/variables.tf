@@ -25,3 +25,9 @@ variable "github_repository" {
   type        = string
   description = "GitHub repository allowed through CodeConnections (Owner/Repo)"
 }
+
+variable "github_app_repository" {
+  type        = string
+  description = "GitHub App repository allowed through CodeConnections (Owner/Repo)"
+  default     = "Kien-devops/NT548-APP"
+}

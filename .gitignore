@@ -23,3 +23,5 @@ tfplan
 tfplan.txt
 *.tfplan
 **/terraform.tfvars
+infra_changes.*
+skip_infra.flag

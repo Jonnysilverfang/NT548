@@ -367,7 +367,7 @@ resource "aws_iam_policy" "codepipeline_dev_policy" {
         Resource = var.github_connection_arn
         Condition = {
           StringEquals = {
-            "codeconnections:FullRepositoryId" = var.github_repository
+            "codeconnections:FullRepositoryId" = [var.github_repository, var.github_app_repository]
           }
         }
       }
@@ -439,7 +439,7 @@ resource "aws_iam_policy" "codepipeline_prod_policy" {
         Resource = var.github_connection_arn
         Condition = {
           StringEquals = {
-            "codeconnections:FullRepositoryId" = var.github_repository
+            "codeconnections:FullRepositoryId" = [var.github_repository, var.github_app_repository]
           }
         }
       },
