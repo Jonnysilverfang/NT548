@@ -1,5 +1,7 @@
 FROM nginx:alpine
 
+RUN apk update && apk upgrade --no-cache
+
 ENV ENVIRONMENT=local \
     USER_SERVICE_HOST=be-user-service \
     USER_SERVICE_PORT=5001 \
