@@ -41,13 +41,17 @@ module "ecs" {
   prod_target_groups    = data.terraform_remote_state.shared.outputs.prod_target_groups
   frontend_api_host     = data.terraform_remote_state.shared.outputs.alb_dns_name
   app_secret_arn        = data.aws_secretsmanager_secret.app.arn
+  db_host               = data.terraform_remote_state.shared.outputs.rds_endpoint
+  db_name               = data.terraform_remote_state.shared.outputs.rds_database_name
+  db_credentials_secret_arn = data.terraform_remote_state.shared.outputs.rds_credentials_secret_arn
   service_desired_count = var.service_desired_count
+  observability_image   = var.observability_image
 
   image_urls = {
-    frontend = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-frontend"]}:${var.app_image_tag}"
-    user     = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-user"]}:${var.app_image_tag}"
-    product  = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-product"]}:${var.app_image_tag}"
-    order    = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-order"]}:${var.app_image_tag}"
+    frontend = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-frontend"]}:${coalesce(var.frontend_image_tag, var.app_image_tag)}"
+    user     = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-user"]}:${coalesce(var.user_image_tag, var.app_image_tag)}"
+    product  = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-product"]}:${coalesce(var.product_image_tag, var.app_image_tag)}"
+    order    = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-order"]}:${coalesce(var.order_image_tag, var.app_image_tag)}"
   }
 }
 

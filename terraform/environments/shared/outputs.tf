@@ -77,3 +77,22 @@ output "codepipeline_prod_role_arn" {
 output "lambda_security_gate_role_arn" {
   value = module.iam.lambda_security_gate_role_arn
 }
+output "rds_endpoint" {
+  description = "Private RDS MySQL endpoint"
+  value       = module.rds.endpoint
+}
+
+output "rds_port" {
+  description = "RDS MySQL port"
+  value       = module.rds.port
+}
+
+output "rds_database_name" {
+  description = "RDS initial database name"
+  value       = module.rds.database_name
+}
+
+output "rds_credentials_secret_arn" {
+  description = "Secrets Manager ARN for RDS credentials"
+  value       = module.rds.credentials_secret_arn
+}

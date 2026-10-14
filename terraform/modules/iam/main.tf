@@ -31,7 +31,10 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
     Statement = [{
       Effect   = "Allow"
       Action   = "secretsmanager:GetSecretValue"
-      Resource = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:nt548/app-secrets-*"
+      Resource = [
+        "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:nt548/app-secrets-*",
+        "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
+      ]
     }]
   })
 }
@@ -48,6 +51,38 @@ resource "aws_iam_role" "ecs_task" {
       Principal = {
         Service = "ecs-tasks.amazonaws.com"
       }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_observability" {
+  name = "nt548-ecs-task-observability"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "xray:PutTraceSegments",
+        "xray:PutTelemetryRecords",
+        "xray:GetSamplingRules",
+        "xray:GetSamplingTargets",
+        "xray:GetSamplingStatisticSummaries"
+      ]
+      Resource = "*"
+    }, {
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:DescribeLogStreams",
+        "logs:PutLogEvents"
+      ]
+      Resource = [
+        "arn:aws:logs:*:*:log-group:/metrics/NT548/Application",
+        "arn:aws:logs:*:*:log-group:/metrics/NT548/Application:*"
+      ]
     }]
   })
 }

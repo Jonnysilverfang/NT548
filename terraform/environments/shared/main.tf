@@ -50,6 +50,15 @@ module "vpc" {
   availability_zones = var.availability_zones
 }
 
+# RDS MySQL is private and accepts traffic only from ECS task security groups.
+module "rds" {
+  source                = "../../modules/rds"
+  project_name          = var.project_name
+  vpc_id                = module.vpc.vpc_id
+  subnet_ids            = module.vpc.public_subnet_ids
+  ecs_security_group_id = module.vpc.ecs_tasks_security_group_id
+}
+
 # 2. ALB Module (Shared ALB, HTTP:80 Listener, PROD Target Groups)
 module "alb" {
   source            = "../../modules/alb"

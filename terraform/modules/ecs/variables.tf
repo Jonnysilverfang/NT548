@@ -39,6 +39,24 @@ variable "app_secret_arn" {
   description = "Secrets Manager ARN containing JWT_SECRET and ADMIN_PASSWORD JSON keys"
 }
 
+variable "db_host" {
+  type        = string
+  description = "RDS endpoint"
+  default     = ""
+}
+
+variable "db_name" {
+  type        = string
+  description = "RDS database name"
+  default     = "nt548"
+}
+
+variable "db_credentials_secret_arn" {
+  type        = string
+  description = "Secrets Manager ARN containing RDS username/password"
+  default     = ""
+}
+
 variable "service_desired_count" {
   type        = number
   description = "Desired task count for each PROD ECS service; use 0 during first-account image bootstrap"
@@ -74,4 +92,10 @@ variable "image_urls" {
     product  = "public.ecr.aws/docker/library/python:3.12-alpine"
     order    = "public.ecr.aws/docker/library/node:20-alpine"
   }
+}
+
+variable "observability_image" {
+  type        = string
+  description = "ADOT collector image with traces and metrics pipelines"
+  default     = "public.ecr.aws/aws-observability/aws-otel-collector:v0.50.0"
 }

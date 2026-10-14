@@ -32,6 +32,22 @@ resource "aws_cloudwatch_log_group" "dev_logs" {
   retention_in_days = 7
 }
 
+resource "aws_cloudwatch_log_group" "prod_otel_collector" {
+  # Collector diagnostics are separate from application logs for faster triage.
+  # checkov:skip=CKV_AWS_158: "CloudWatch Log Group encryption using default AWS key is sufficient for project requirements"
+  # checkov:skip=CKV_AWS_338: "Retention period set for lab lifecycle"
+  name              = "/nt548/prod/otel-collector"
+  retention_in_days = 14
+}
+
+resource "aws_cloudwatch_log_group" "prod_app_metrics" {
+  # EMF exporter writes application metrics through CloudWatch Logs.
+  # checkov:skip=CKV_AWS_158: "CloudWatch Log Group encryption using default AWS key is sufficient for project requirements"
+  # checkov:skip=CKV_AWS_338: "Retention period set for lab lifecycle"
+  name              = "/metrics/NT548/Application"
+  retention_in_days = 14
+}
+
 # PROD Task Definitions
 resource "aws_ecs_task_definition" "prod_frontend" {
   family                   = "nt548-prod-frontend"
@@ -75,8 +91,8 @@ resource "aws_ecs_task_definition" "prod_user" {
   family                   = "nt548-prod-user"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "512"
+  memory                   = "1024"
   execution_role_arn       = var.execution_role_arn
   task_role_arn            = var.task_role_arn
 
@@ -92,11 +108,24 @@ resource "aws_ecs_task_definition" "prod_user" {
       { name = "ENVIRONMENT", value = "prod" },
       { name = "PORT", value = "5001" },
       { name = "NODE_ENV", value = "production" },
-      { name = "ADMIN_EMAIL", value = "admin@nt548.local" }
+      { name = "ADMIN_EMAIL", value = "admin@nt548.local" },
+      { name = "OTEL_SERVICE_NAME", value = "nt548-prod-user-service" },
+      { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = "http://127.0.0.1:4317" },
+      { name = "OTEL_EXPORTER_OTLP_PROTOCOL", value = "grpc" },
+      { name = "OTEL_RESOURCE_ATTRIBUTES", value = "deployment.environment=prod,service.namespace=nt548" },
+      { name = "OTEL_TRACES_SAMPLER", value = "parentbased_traceidratio" },
+      { name = "OTEL_TRACES_SAMPLER_ARG", value = "1.0" },
+      { name = "OTEL_METRICS_EXPORTER", value = "otlp" },
+      { name = "OTEL_LOGS_EXPORTER", value = "none" },
+      { name = "DB_HOST", value = var.db_host },
+      { name = "DB_PORT", value = "3306" },
+      { name = "DB_NAME", value = var.db_name }
     ]
     secrets = [
       { name = "JWT_SECRET", valueFrom = "${var.app_secret_arn}:JWT_SECRET::" },
-      { name = "ADMIN_PASSWORD", valueFrom = "${var.app_secret_arn}:ADMIN_PASSWORD::" }
+      { name = "ADMIN_PASSWORD", valueFrom = "${var.app_secret_arn}:ADMIN_PASSWORD::" },
+      { name = "DB_USER", valueFrom = "${var.db_credentials_secret_arn}:username::" },
+      { name = "DB_PASSWORD", valueFrom = "${var.db_credentials_secret_arn}:password::" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -107,6 +136,21 @@ resource "aws_ecs_task_definition" "prod_user" {
         mode                  = "blocking"
       }
     }
+    }, {
+    name        = "adot-collector"
+    image       = var.observability_image
+    essential   = false
+    command     = ["--config=/etc/ecs/nt548-adot.yaml"]
+    environment = [{ name = "AWS_REGION", value = data.aws_region.current.name }]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.prod_otel_collector.name
+        awslogs-region        = data.aws_region.current.name
+        awslogs-stream-prefix = "user"
+        mode                  = "blocking"
+      }
+    }
   }])
 }
 
@@ -114,8 +158,8 @@ resource "aws_ecs_task_definition" "prod_product" {
   family                   = "nt548-prod-product"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "512"
+  memory                   = "1024"
   execution_role_arn       = var.execution_role_arn
   task_role_arn            = var.task_role_arn
 
@@ -129,10 +173,25 @@ resource "aws_ecs_task_definition" "prod_product" {
     }]
     environment = [
       { name = "ENVIRONMENT", value = "prod" },
-      { name = "PORT", value = "5002" }
+      { name = "PORT", value = "5002" },
+      { name = "OTEL_SERVICE_NAME", value = "nt548-prod-product-service" },
+      { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = "http://127.0.0.1:4317" },
+      { name = "OTEL_EXPORTER_OTLP_PROTOCOL", value = "grpc" },
+      { name = "OTEL_RESOURCE_ATTRIBUTES", value = "deployment.environment=prod,service.namespace=nt548" },
+      { name = "OTEL_TRACES_SAMPLER", value = "parentbased_traceidratio" },
+      { name = "OTEL_TRACES_SAMPLER_ARG", value = "1.0" },
+      { name = "OTEL_METRICS_EXPORTER", value = "otlp" },
+      { name = "OTEL_LOGS_EXPORTER", value = "none" },
+      { name = "OTEL_PYTHON_EXCLUDED_URLS", value = "health" },
+      { name = "OTEL_PYTHON_LOG_CORRELATION", value = "true" },
+      { name = "DB_HOST", value = var.db_host },
+      { name = "DB_PORT", value = "3306" },
+      { name = "DB_NAME", value = var.db_name }
     ]
     secrets = [
-      { name = "JWT_SECRET", valueFrom = "${var.app_secret_arn}:JWT_SECRET::" }
+      { name = "JWT_SECRET", valueFrom = "${var.app_secret_arn}:JWT_SECRET::" },
+      { name = "DB_USER", valueFrom = "${var.db_credentials_secret_arn}:username::" },
+      { name = "DB_PASSWORD", valueFrom = "${var.db_credentials_secret_arn}:password::" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -143,6 +202,23 @@ resource "aws_ecs_task_definition" "prod_product" {
         mode                  = "blocking"
       }
     }
+    }, {
+    name      = "adot-collector"
+    image     = var.observability_image
+    essential = false
+    command   = ["--config=/etc/ecs/nt548-adot.yaml"]
+    environment = [
+      { name = "AWS_REGION", value = data.aws_region.current.name }
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.prod_otel_collector.name
+        awslogs-region        = data.aws_region.current.name
+        awslogs-stream-prefix = "product"
+        mode                  = "blocking"
+      }
+    }
   }])
 }
 
@@ -150,8 +226,8 @@ resource "aws_ecs_task_definition" "prod_order" {
   family                   = "nt548-prod-order"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "512"
+  memory                   = "1024"
   execution_role_arn       = var.execution_role_arn
   task_role_arn            = var.task_role_arn
 
@@ -165,10 +241,25 @@ resource "aws_ecs_task_definition" "prod_order" {
     }]
     environment = [
       { name = "ENVIRONMENT", value = "prod" },
-      { name = "PORT", value = "5003" }
+      { name = "PORT", value = "5003" },
+      { name = "OTEL_SERVICE_NAME", value = "nt548-prod-order-service" },
+      { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = "http://127.0.0.1:4317" },
+      { name = "OTEL_EXPORTER_OTLP_PROTOCOL", value = "grpc" },
+      { name = "OTEL_RESOURCE_ATTRIBUTES", value = "deployment.environment=prod,service.namespace=nt548" },
+      { name = "OTEL_TRACES_SAMPLER", value = "parentbased_traceidratio" },
+      { name = "OTEL_TRACES_SAMPLER_ARG", value = "1.0" },
+      { name = "OTEL_METRICS_EXPORTER", value = "otlp" },
+      { name = "OTEL_LOGS_EXPORTER", value = "none" },
+      { name = "DB_HOST", value = var.db_host },
+      { name = "DB_PORT", value = "3306" },
+      { name = "DB_NAME", value = var.db_name },
+      { name = "USER_SERVICE_URL", value = "http://${var.frontend_api_host}/api/users" },
+      { name = "PRODUCT_SERVICE_URL", value = "http://${var.frontend_api_host}/api/products" }
     ]
     secrets = [
-      { name = "JWT_SECRET", valueFrom = "${var.app_secret_arn}:JWT_SECRET::" }
+      { name = "JWT_SECRET", valueFrom = "${var.app_secret_arn}:JWT_SECRET::" },
+      { name = "DB_USER", valueFrom = "${var.db_credentials_secret_arn}:username::" },
+      { name = "DB_PASSWORD", valueFrom = "${var.db_credentials_secret_arn}:password::" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -176,6 +267,21 @@ resource "aws_ecs_task_definition" "prod_order" {
         awslogs-group         = aws_cloudwatch_log_group.prod_logs["order"].name
         awslogs-region        = data.aws_region.current.name
         awslogs-stream-prefix = "prod"
+        mode                  = "blocking"
+      }
+    }
+    }, {
+    name        = "adot-collector"
+    image       = var.observability_image
+    essential   = false
+    command     = ["--config=/etc/ecs/nt548-adot.yaml"]
+    environment = [{ name = "AWS_REGION", value = data.aws_region.current.name }]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.prod_otel_collector.name
+        awslogs-region        = data.aws_region.current.name
+        awslogs-stream-prefix = "order"
         mode                  = "blocking"
       }
     }
