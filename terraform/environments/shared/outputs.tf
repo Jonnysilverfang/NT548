@@ -6,6 +6,30 @@ output "public_subnet_ids" {
   value = module.vpc.public_subnet_ids
 }
 
+output "private_database_subnet_ids" {
+  value = module.vpc.private_database_subnet_ids
+}
+
+output "postgresql_endpoint" {
+  value = module.rds.endpoint
+}
+
+output "postgresql_port" {
+  value = module.rds.port
+}
+
+output "postgresql_database_name" {
+  value = module.rds.database_name
+}
+
+output "postgresql_master_secret_arn" {
+  value = module.rds.master_user_secret_arn
+}
+
+output "postgresql_security_group_id" {
+  value = module.rds.security_group_id
+}
+
 output "alb_security_group_id" {
   value = module.vpc.alb_security_group_id
 }

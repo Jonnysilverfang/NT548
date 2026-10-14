@@ -35,6 +35,37 @@ resource "aws_subnet" "public" {
   }
 }
 
+resource "aws_subnet" "private_database" {
+  count                   = length(var.private_subnet_cidrs)
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.private_subnet_cidrs[count.index]
+  availability_zone       = var.availability_zones[count.index]
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name    = "${var.project_name}-private-db-${count.index + 1}"
+    Type    = "Private"
+    Purpose = "Database"
+    Project = var.project_name
+  }
+}
+
+resource "aws_route_table" "private_database" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name    = "${var.project_name}-private-db-rt"
+    Type    = "Private"
+    Project = var.project_name
+  }
+}
+
+resource "aws_route_table_association" "private_database" {
+  count          = length(aws_subnet.private_database)
+  subnet_id      = aws_subnet.private_database[count.index].id
+  route_table_id = aws_route_table.private_database.id
+}
+
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 

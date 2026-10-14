@@ -50,7 +50,16 @@ module "vpc" {
   availability_zones = var.availability_zones
 }
 
-# 2. ALB Module (Shared ALB, HTTP:80 Listener, PROD Target Groups)
+# 2. RDS PostgreSQL (private, shared by the three backend services)
+module "rds" {
+  source                      = "../../modules/rds"
+  project_name                = var.project_name
+  vpc_id                      = module.vpc.vpc_id
+  private_subnet_ids          = module.vpc.private_database_subnet_ids
+  ecs_tasks_security_group_id = module.vpc.ecs_tasks_security_group_id
+}
+
+# 3. ALB Module (Shared ALB, HTTP:80 Listener, PROD Target Groups)
 module "alb" {
   source            = "../../modules/alb"
   vpc_id            = module.vpc.vpc_id
@@ -59,12 +68,12 @@ module "alb" {
   project_name      = var.project_name
 }
 
-# 3. ECR Module (4 DEV + 4 PROD ECR Repositories)
+# 4. ECR Module (4 DEV + 4 PROD ECR Repositories)
 module "ecr" {
   source = "../../modules/ecr"
 }
 
-# 4. IAM Module (Least-privilege roles)
+# 5. IAM Module (Least-privilege roles)
 module "iam" {
   source                = "../../modules/iam"
   project_name          = var.project_name

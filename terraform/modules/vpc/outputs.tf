@@ -8,6 +8,11 @@ output "public_subnet_ids" {
   value       = aws_subnet.public[*].id
 }
 
+output "private_database_subnet_ids" {
+  description = "IDs of private subnets reserved for RDS"
+  value       = aws_subnet.private_database[*].id
+}
+
 output "alb_security_group_id" {
   description = "Security Group ID for ALB"
   value       = aws_security_group.alb.id
