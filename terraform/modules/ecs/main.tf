@@ -92,11 +92,16 @@ resource "aws_ecs_task_definition" "prod_user" {
       { name = "ENVIRONMENT", value = "prod" },
       { name = "PORT", value = "5001" },
       { name = "NODE_ENV", value = "production" },
-      { name = "ADMIN_EMAIL", value = "admin@nt548.local" }
+      { name = "ADMIN_EMAIL", value = "admin@nt548.local" },
+      { name = "DB_HOST", value = var.postgresql_endpoint },
+      { name = "DB_PORT", value = tostring(var.postgresql_port) },
+      { name = "DB_NAME", value = var.postgresql_database_name },
+      { name = "DB_USER", value = "nt548_user" }
     ]
     secrets = [
       { name = "JWT_SECRET", valueFrom = "${var.app_secret_arn}:JWT_SECRET::" },
-      { name = "ADMIN_PASSWORD", valueFrom = "${var.app_secret_arn}:ADMIN_PASSWORD::" }
+      { name = "ADMIN_PASSWORD", valueFrom = "${var.app_secret_arn}:ADMIN_PASSWORD::" },
+      { name = "DB_PASSWORD", valueFrom = "${var.postgres_app_secret_arn}:USER_DB_PASSWORD::" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -129,10 +134,15 @@ resource "aws_ecs_task_definition" "prod_product" {
     }]
     environment = [
       { name = "ENVIRONMENT", value = "prod" },
-      { name = "PORT", value = "5002" }
+      { name = "PORT", value = "5002" },
+      { name = "DB_HOST", value = var.postgresql_endpoint },
+      { name = "DB_PORT", value = tostring(var.postgresql_port) },
+      { name = "DB_NAME", value = var.postgresql_database_name },
+      { name = "DB_USER", value = "nt548_product" }
     ]
     secrets = [
-      { name = "JWT_SECRET", valueFrom = "${var.app_secret_arn}:JWT_SECRET::" }
+      { name = "JWT_SECRET", valueFrom = "${var.app_secret_arn}:JWT_SECRET::" },
+      { name = "DB_PASSWORD", valueFrom = "${var.postgres_app_secret_arn}:PRODUCT_DB_PASSWORD::" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -165,10 +175,15 @@ resource "aws_ecs_task_definition" "prod_order" {
     }]
     environment = [
       { name = "ENVIRONMENT", value = "prod" },
-      { name = "PORT", value = "5003" }
+      { name = "PORT", value = "5003" },
+      { name = "DB_HOST", value = var.postgresql_endpoint },
+      { name = "DB_PORT", value = tostring(var.postgresql_port) },
+      { name = "DB_NAME", value = var.postgresql_database_name },
+      { name = "DB_USER", value = "nt548_order" }
     ]
     secrets = [
-      { name = "JWT_SECRET", valueFrom = "${var.app_secret_arn}:JWT_SECRET::" }
+      { name = "JWT_SECRET", valueFrom = "${var.app_secret_arn}:JWT_SECRET::" },
+      { name = "DB_PASSWORD", valueFrom = "${var.postgres_app_secret_arn}:ORDER_DB_PASSWORD::" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -346,3 +361,4 @@ resource "aws_ecs_service" "prod_order" {
     Service     = "order"
   }
 }
+
