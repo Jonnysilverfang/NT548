@@ -33,6 +33,7 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
       Action = "secretsmanager:GetSecretValue"
       Resource = [
         "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:nt548/app-secrets-*",
+        "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:nt548/postgres-app-secrets-*",
         "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:rds!*",
       ]
     }]
@@ -568,3 +569,4 @@ resource "aws_iam_role_policy_attachment" "lambda_security_gate_attach" {
   role       = aws_iam_role.lambda_security_gate.name
   policy_arn = aws_iam_policy.lambda_security_gate_policy.arn
 }
+
