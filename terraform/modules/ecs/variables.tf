@@ -39,6 +39,28 @@ variable "app_secret_arn" {
   description = "Secrets Manager ARN containing JWT_SECRET and ADMIN_PASSWORD JSON keys"
 }
 
+variable "postgres_app_secret_arn" {
+  type        = string
+  description = "Secrets Manager ARN containing the three PostgreSQL application role passwords"
+}
+
+variable "postgresql_endpoint" {
+  type        = string
+  description = "Private PostgreSQL endpoint from the shared Terraform state"
+}
+
+variable "postgresql_port" {
+  type        = number
+  description = "PostgreSQL port from the shared Terraform state"
+  default     = 5432
+}
+
+variable "postgresql_database_name" {
+  type        = string
+  description = "PostgreSQL database name from the shared Terraform state"
+  default     = "nt548"
+}
+
 variable "service_desired_count" {
   type        = number
   description = "Desired task count for each PROD ECS service; use 0 during first-account image bootstrap"
@@ -75,3 +97,4 @@ variable "image_urls" {
     order    = "public.ecr.aws/docker/library/node:20-alpine"
   }
 }
+
