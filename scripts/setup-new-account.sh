@@ -79,6 +79,22 @@ else
     echo "Secret nt548/app-secrets already exists; leaving its value unchanged."
 fi
 
+echo "[4b/6] Creating PostgreSQL application-role secret when absent"
+if ! aws secretsmanager describe-secret --secret-id "nt548/postgres-app-secrets" --region "$AWS_REGION" >/dev/null 2>&1; then
+    USER_DB_PASSWORD="${NT548_USER_DB_PASSWORD:-$(openssl rand -hex 24)}"
+    PRODUCT_DB_PASSWORD="${NT548_PRODUCT_DB_PASSWORD:-$(openssl rand -hex 24)}"
+    ORDER_DB_PASSWORD="${NT548_ORDER_DB_PASSWORD:-$(openssl rand -hex 24)}"
+    POSTGRES_SECRET_JSON=$(python3 -c 'import json,sys; print(json.dumps({"USER_DB_PASSWORD":sys.argv[1],"PRODUCT_DB_PASSWORD":sys.argv[2],"ORDER_DB_PASSWORD":sys.argv[3]}))' "$USER_DB_PASSWORD" "$PRODUCT_DB_PASSWORD" "$ORDER_DB_PASSWORD")
+    aws secretsmanager create-secret \
+        --name "nt548/postgres-app-secrets" \
+        --description "PostgreSQL application-role passwords for NT548 services" \
+        --secret-string "$POSTGRES_SECRET_JSON" \
+        --region "$AWS_REGION" >/dev/null
+    echo "Created nt548/postgres-app-secrets."
+else
+    echo "Secret nt548/postgres-app-secrets already exists; leaving its value unchanged."
+fi
+
 echo "[5/6] Generating account-local Terraform variable files"
 cat > terraform/environments/shared/terraform.tfvars <<EOF
 aws_region            = "$AWS_REGION"
@@ -117,3 +133,4 @@ echo "  terraform -chdir=terraform/environments/prod apply"
 echo ""
 echo "PROD starts with service_desired_count=0 so missing bootstrap images cannot block ECS."
 echo "After the first successful PROD image build, set service_desired_count=1 and apply PROD again."
+
