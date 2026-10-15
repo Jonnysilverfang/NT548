@@ -29,8 +29,8 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = "secretsmanager:GetSecretValue"
+      Effect = "Allow"
+      Action = "secretsmanager:GetSecretValue"
       Resource = [
         "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:nt548/app-secrets-*",
         "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
@@ -71,7 +71,7 @@ resource "aws_iam_role_policy" "ecs_task_observability" {
         "xray:GetSamplingStatisticSummaries"
       ]
       Resource = "*"
-    }, {
+      }, {
       Effect = "Allow"
       Action = [
         "logs:CreateLogGroup",
@@ -321,10 +321,22 @@ resource "aws_iam_policy" "codebuild_prod_policy" {
           "iam:GetRole",
           "iam:GetRolePolicy",
           "iam:ListRolePolicies",
-          "iam:ListAttachedRolePolicies",
-          "iam:PassRole"
+          "iam:ListAttachedRolePolicies"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = "iam:PassRole"
+        Resource = [
+          aws_iam_role.ecs_task_execution.arn,
+          aws_iam_role.ecs_task.arn,
+          aws_iam_role.codebuild_dev.arn,
+          aws_iam_role.codebuild_prod.arn,
+          aws_iam_role.codepipeline_dev.arn,
+          aws_iam_role.codepipeline_prod.arn,
+          aws_iam_role.lambda_security_gate.arn
+        ]
       },
       {
         Effect = "Allow"
@@ -478,23 +490,6 @@ resource "aws_iam_policy" "codepipeline_prod_policy" {
           }
         }
       },
-      {
-        Effect = "Allow"
-        Action = [
-          "ecs:DescribeServices",
-          "ecs:DescribeTaskDefinition",
-          "ecs:DescribeTasks",
-          "ecs:ListTasks",
-          "ecs:RegisterTaskDefinition",
-          "ecs:UpdateService"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = "iam:PassRole"
-        Resource = "*"
-      }
     ]
   })
 }

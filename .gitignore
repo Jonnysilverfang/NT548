@@ -25,3 +25,4 @@ tfplan.txt
 **/terraform.tfvars
 infra_changes.*
 skip_infra.flag
+test-evidence/

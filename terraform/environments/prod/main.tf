@@ -31,21 +31,21 @@ module "sns_app" {
 
 # 2. ECS Cluster & PROD Services (24/7 Fleet with Rolling Deployment)
 module "ecs" {
-  source                = "../../modules/ecs"
-  cluster_name          = "nt548-cluster"
-  vpc_id                = data.terraform_remote_state.shared.outputs.vpc_id
-  subnet_ids            = data.terraform_remote_state.shared.outputs.public_subnet_ids
-  security_group_id     = data.terraform_remote_state.shared.outputs.ecs_tasks_security_group_id
-  execution_role_arn    = data.terraform_remote_state.shared.outputs.ecs_task_execution_role_arn
-  task_role_arn         = data.terraform_remote_state.shared.outputs.ecs_task_role_arn
-  prod_target_groups    = data.terraform_remote_state.shared.outputs.prod_target_groups
-  frontend_api_host     = data.terraform_remote_state.shared.outputs.alb_dns_name
-  app_secret_arn        = data.aws_secretsmanager_secret.app.arn
-  db_host               = data.terraform_remote_state.shared.outputs.rds_endpoint
-  db_name               = data.terraform_remote_state.shared.outputs.rds_database_name
+  source                    = "../../modules/ecs"
+  cluster_name              = "nt548-cluster"
+  vpc_id                    = data.terraform_remote_state.shared.outputs.vpc_id
+  subnet_ids                = data.terraform_remote_state.shared.outputs.public_subnet_ids
+  security_group_id         = data.terraform_remote_state.shared.outputs.ecs_tasks_security_group_id
+  execution_role_arn        = data.terraform_remote_state.shared.outputs.ecs_task_execution_role_arn
+  task_role_arn             = data.terraform_remote_state.shared.outputs.ecs_task_role_arn
+  prod_target_groups        = data.terraform_remote_state.shared.outputs.prod_target_groups
+  frontend_api_host         = data.terraform_remote_state.shared.outputs.alb_dns_name
+  app_secret_arn            = data.aws_secretsmanager_secret.app.arn
+  db_host                   = data.terraform_remote_state.shared.outputs.rds_endpoint
+  db_name                   = data.terraform_remote_state.shared.outputs.rds_database_name
   db_credentials_secret_arn = data.terraform_remote_state.shared.outputs.rds_credentials_secret_arn
-  service_desired_count = var.service_desired_count
-  observability_image   = var.observability_image
+  service_desired_count     = var.service_desired_count
+  observability_image       = var.observability_image
 
   image_urls = {
     frontend = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-frontend"]}:${coalesce(var.frontend_image_tag, var.app_image_tag)}"
@@ -253,6 +253,52 @@ resource "aws_codebuild_project" "app_build" {
   }
 }
 
+resource "aws_codebuild_project" "app_deploy" {
+  name          = "nt548-prod-app-deploy"
+  description   = "Selective parallel ECS deployment for changed PROD services"
+  service_role  = data.terraform_remote_state.shared.outputs.codebuild_prod_role_arn
+  build_timeout = 30
+
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+
+  environment {
+    compute_type                = "BUILD_GENERAL1_SMALL"
+    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    type                        = "LINUX_CONTAINER"
+    privileged_mode             = false
+    image_pull_credentials_type = "CODEBUILD"
+
+    environment_variable {
+      name  = "AWS_REGION"
+      value = var.aws_region
+    }
+
+    environment_variable {
+      name  = "CLUSTER_NAME"
+      value = module.ecs.cluster_name
+    }
+  }
+
+  source {
+    type      = "CODEPIPELINE"
+    buildspec = "buildspec/prod-deploy.yml"
+  }
+
+  logs_config {
+    cloudwatch_logs {
+      status = "ENABLED"
+    }
+  }
+
+  tags = {
+    Name        = "nt548-prod-app-deploy"
+    Environment = "prod"
+    Project     = "NT548"
+  }
+}
+
 # 4. PROD Infra CodePipeline (Source -> InfraPlan -> InfraApproval -> InfraApply)
 resource "aws_codepipeline" "infra" {
   # checkov:skip=CKV_AWS_219: "The versioned private artifact bucket uses S3 managed encryption; a customer-managed KMS key is deferred for lab cost control"
@@ -448,66 +494,15 @@ resource "aws_codepipeline" "app" {
     name = "AppDeploy"
 
     action {
-      name            = "DeployFrontend"
-      category        = "Deploy"
+      name            = "DeployChangedServices"
+      category        = "Build"
       owner           = "AWS"
-      provider        = "ECS"
+      provider        = "CodeBuild"
       input_artifacts = ["AppBuildArtifact"]
       version         = "1"
-      run_order       = 1
 
       configuration = {
-        ClusterName = module.ecs.cluster_name
-        ServiceName = module.ecs.frontend_service_name
-        FileName    = "imagedefinitions-frontend.json"
-      }
-    }
-
-    action {
-      name            = "DeployUser"
-      category        = "Deploy"
-      owner           = "AWS"
-      provider        = "ECS"
-      input_artifacts = ["AppBuildArtifact"]
-      version         = "1"
-      run_order       = 1
-
-      configuration = {
-        ClusterName = module.ecs.cluster_name
-        ServiceName = module.ecs.user_service_name
-        FileName    = "imagedefinitions-user.json"
-      }
-    }
-
-    action {
-      name            = "DeployProduct"
-      category        = "Deploy"
-      owner           = "AWS"
-      provider        = "ECS"
-      input_artifacts = ["AppBuildArtifact"]
-      version         = "1"
-      run_order       = 1
-
-      configuration = {
-        ClusterName = module.ecs.cluster_name
-        ServiceName = module.ecs.product_service_name
-        FileName    = "imagedefinitions-product.json"
-      }
-    }
-
-    action {
-      name            = "DeployOrder"
-      category        = "Deploy"
-      owner           = "AWS"
-      provider        = "ECS"
-      input_artifacts = ["AppBuildArtifact"]
-      version         = "1"
-      run_order       = 1
-
-      configuration = {
-        ClusterName = module.ecs.cluster_name
-        ServiceName = module.ecs.order_service_name
-        FileName    = "imagedefinitions-order.json"
+        ProjectName = aws_codebuild_project.app_deploy.name
       }
     }
   }

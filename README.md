@@ -8,7 +8,7 @@ Nền tảng microservices chạy trên Amazon ECS Fargate, được quản lý 
 
 - `nt548-dev-pipeline`: build, test, scan, triển khai môi trường tạm thời, smoke test và tự dọn dẹp (theo dõi `Kien-devops/NT548-APP:dev`).
 - `nt548-prod-infra-pipeline`: lập kế hoạch hạ tầng Terraform, phê duyệt thủ công, apply (theo dõi `Jonnysilverfang/NT548:main`).
-- `nt548-prod-app-pipeline`: build/scan ECR, phê duyệt thủ công và rolling deployment lên ECS PROD (theo dõi `Kien-devops/NT548-APP:main`).
+- `nt548-prod-app-pipeline`: selective build/scan ECR, phê duyệt thủ công và selective parallel rolling deployment lên ECS PROD (theo dõi `Kien-devops/NT548-APP:main`).
 
 > Đây là kiến trúc **production-like phục vụ học tập/lab**. Cấu hình mặc định ưu tiên chi phí thấp: public subnets, Fargate public IP, ALB HTTP và một task cho mỗi PROD service. Xem [Giới hạn và hướng nâng cấp](#giới-hạn-và-hướng-nâng-cấp) trước khi dùng cho production thật.
 
@@ -37,7 +37,7 @@ Kiến trúc được chia tách hoàn toàn giữa **Hạ tầng (Infra as Code
    │ 3. Manual Infra Approval  │                       │ 2. Unit Tests      │         │ 2. Unit Tests           │
    │ 4. Terraform Apply        │                       │ 3. Build & Scan ECR│         │ 3. Build & Scan ECR     │
    └─────────────┬─────────────┘                       │ 4. Security Gate   │         │ 4. Manual App Approval  │
-                 │                                     │ 5. Ephemeral ECS   │         │ 5. ECS Rolling Deploy   │
+                 │                                     │ 5. Ephemeral ECS   │         │ 5. Selective Deploy     │
                  │                                     │ 6. Smoke Tests     │         └────────────┬────────────┘
                  │ Provision / Update                  │ 7. Auto Cleanup    │                      │ Deploy to
                  ▼                                     └────────────────────┘                      ▼
@@ -97,6 +97,7 @@ Kiến trúc được chia tách hoàn toàn giữa **Hạ tầng (Infra as Code
     → Source (WebhookV2 qua AWS CodeConnections)
     → AppBuild: Unit tests + Build 4 Docker images + Push PROD ECR + Quét lỗ hổng
     → ProductionApproval: Phê duyệt thủ công dựa trên kết quả ECR scan (C=0, H=0)
+    → AppDeploy: DeployChangedServices chạy selective parallel ECS rolling deployment
 ---
 
 ## Cơ chế Change Detection & Thành phần CI/CD Tái sử dụng
