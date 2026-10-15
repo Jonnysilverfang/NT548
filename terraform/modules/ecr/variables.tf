@@ -16,7 +16,8 @@ variable "prod_repository_names" {
     "nt548-prod-user",
     "nt548-prod-product",
     "nt548-prod-order",
-    "nt548-prod-frontend"
+    "nt548-prod-frontend",
+    "nt548-prod-observability"
   ]
 }
 

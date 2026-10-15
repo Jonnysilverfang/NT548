@@ -30,6 +30,23 @@ output "postgresql_security_group_id" {
   value = module.rds.security_group_id
 }
 
+# Backward-compatible outputs for the existing MySQL RDS used by production.
+output "rds_endpoint" {
+  value = module.rds.mysql_endpoint
+}
+
+output "rds_port" {
+  value = module.rds.mysql_port
+}
+
+output "rds_database_name" {
+  value = module.rds.mysql_database_name
+}
+
+output "rds_credentials_secret_arn" {
+  value = module.rds.mysql_master_user_secret_arn
+}
+
 output "alb_security_group_id" {
   value = module.vpc.alb_security_group_id
 }

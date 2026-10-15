@@ -22,3 +22,22 @@ output "security_group_id" {
   description = "Security group attached to PostgreSQL"
   value       = aws_security_group.postgresql.id
 }
+output "mysql_endpoint" {
+  description = "Existing production MySQL hostname"
+  value       = aws_db_instance.mysql.address
+}
+
+output "mysql_port" {
+  description = "Existing production MySQL port"
+  value       = aws_db_instance.mysql.port
+}
+
+output "mysql_database_name" {
+  description = "Existing production MySQL database name"
+  value       = aws_db_instance.mysql.db_name
+}
+
+output "mysql_master_user_secret_arn" {
+  description = "Existing production MySQL master secret ARN"
+  value       = aws_db_instance.mysql.master_user_secret[0].secret_arn
+}

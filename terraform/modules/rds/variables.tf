@@ -19,6 +19,20 @@ variable "private_subnet_ids" {
   }
 }
 
+variable "existing_mysql_subnet_ids" {
+  type        = list(string)
+  description = "Existing subnet IDs used by the production MySQL RDS instance; kept unchanged while PostgreSQL is added."
+  default = [
+    "subnet-002982d9646e6d8ac",
+    "subnet-0cdfcbf1524fc9f37",
+  ]
+
+  validation {
+    condition     = length(var.existing_mysql_subnet_ids) >= 2
+    error_message = "The existing MySQL subnet group must keep at least two subnets."
+  }
+}
+
 variable "ecs_tasks_security_group_id" {
   type        = string
   description = "Security group used by ECS tasks that connect to PostgreSQL"
