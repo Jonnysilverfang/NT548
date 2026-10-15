@@ -19,7 +19,7 @@ variable "project_name" {
 variable "github_connection_arn" {
   type        = string
   description = "CodeConnections ARN used by the CI/CD pipelines"
-  default     = "arn:aws:codeconnections:ap-southeast-1:404063515739:connection/043741f8-f157-4ed4-8cb7-9006c8b02a4d"
+  default     = "arn:aws:codeconnections:ap-southeast-1:620306387033:connection/13537aeb-3c13-4715-b94c-a7159ec35ebe"
 }
 
 variable "availability_zones" {
