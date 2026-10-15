@@ -16,6 +16,10 @@ data "aws_secretsmanager_secret" "app" {
   name = "nt548/app-secrets"
 }
 
+data "aws_secretsmanager_secret" "postgres_app" {
+  name = "nt548/postgres-app-secrets"
+}
+
 # 1. SNS Topics for Manual Approvals
 module "sns_infra" {
   source         = "../../modules/sns"
@@ -31,17 +35,21 @@ module "sns_app" {
 
 # 2. ECS Cluster & PROD Services (24/7 Fleet with Rolling Deployment)
 module "ecs" {
-  source                = "../../modules/ecs"
-  cluster_name          = "nt548-cluster"
-  vpc_id                = data.terraform_remote_state.shared.outputs.vpc_id
-  subnet_ids            = data.terraform_remote_state.shared.outputs.public_subnet_ids
-  security_group_id     = data.terraform_remote_state.shared.outputs.ecs_tasks_security_group_id
-  execution_role_arn    = data.terraform_remote_state.shared.outputs.ecs_task_execution_role_arn
-  task_role_arn         = data.terraform_remote_state.shared.outputs.ecs_task_role_arn
-  prod_target_groups    = data.terraform_remote_state.shared.outputs.prod_target_groups
-  frontend_api_host     = data.terraform_remote_state.shared.outputs.alb_dns_name
-  app_secret_arn        = data.aws_secretsmanager_secret.app.arn
-  service_desired_count = var.service_desired_count
+  source                   = "../../modules/ecs"
+  cluster_name             = "nt548-cluster"
+  vpc_id                   = data.terraform_remote_state.shared.outputs.vpc_id
+  subnet_ids               = data.terraform_remote_state.shared.outputs.public_subnet_ids
+  security_group_id        = data.terraform_remote_state.shared.outputs.ecs_tasks_security_group_id
+  execution_role_arn       = data.terraform_remote_state.shared.outputs.ecs_task_execution_role_arn
+  task_role_arn            = data.terraform_remote_state.shared.outputs.ecs_task_role_arn
+  prod_target_groups       = data.terraform_remote_state.shared.outputs.prod_target_groups
+  frontend_api_host        = data.terraform_remote_state.shared.outputs.alb_dns_name
+  app_secret_arn           = data.aws_secretsmanager_secret.app.arn
+  postgres_app_secret_arn  = data.aws_secretsmanager_secret.postgres_app.arn
+  postgresql_endpoint      = data.terraform_remote_state.shared.outputs.postgresql_endpoint
+  postgresql_port          = data.terraform_remote_state.shared.outputs.postgresql_port
+  postgresql_database_name = data.terraform_remote_state.shared.outputs.postgresql_database_name
+  service_desired_count    = var.service_desired_count
 
   image_urls = {
     frontend = "${data.terraform_remote_state.shared.outputs.prod_repository_urls["nt548-prod-frontend"]}:${var.app_image_tag}"
@@ -514,3 +522,4 @@ resource "aws_codepipeline" "app" {
     Project     = "NT548"
   }
 }
+
